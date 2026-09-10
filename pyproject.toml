@@ -1,0 +1,46 @@
+[project]
+name = "roomlamp"
+dynamic = ["version"]
+description = "a Kubernetes TUI tool built on the features of Headlamp"
+readme = "README.md"
+authors = [
+    { name = "yamakox", email = "yamakox@gmail.com" }
+]
+license = "Apache-2.0"
+license-files = [ "LICENSE" ]
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta", 
+]
+dependencies = [
+    "click>=8.5.0",
+    "python-dotenv>=1.2.0",
+    "textual>=8.2.0",
+]
+
+[project.scripts]
+roomlamp = "roomlamp:main"
+
+[project.urls]
+Homepage = "https://y-app.cc/"
+Repository = "https://github.com/yamakox/roomlamp"
+Issues = "https://github.com/yamakox/roomlamp/issues"
+
+[build-system]
+requires = ["poetry-core>=2,<3", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry]
+version = "0.0.0"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+
+[dependency-groups]
+dev = [
+    "debugpy>=1.8.0",
+    "pytest>=9.1.0",
+    "ruff>=0.16.0",
+]

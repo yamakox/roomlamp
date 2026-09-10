@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "debug TUI app",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "module": "roomlamp",
+      "args": [],
+      "console": "integratedTerminal",
+      "autoReload": {
+        "enable": false,
+        "include": [
+          "**/*.py",
+          "**/*.pyw"
+        ] 
+      },
+      "env": {
+        "DEBUG": "1"
+      },
+      "justMyCode": true
+    }
+  ]
+}
