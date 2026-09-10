@@ -70,6 +70,26 @@ This repository is expected to live at `<dev-root>/python/roomlamp`. A Headlamp 
 
 When implementing a feature, read the matching Headlamp code at that path. Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture.
 
+### Local cluster verification
+
+Live cluster checks are **optional**. They apply only when all of the following are true on the development PC (the machine running the local agent — same meaning as "this workstation"):
+
+1. The PC can reach a Kubernetes API server on the network.
+2. A kubeconfig on that PC (usually `~/.kube/config`, or `KUBECONFIG` / `--kubeconfig`) can authenticate and control that cluster, the same way kubectl does.
+
+External contributors and their AI agents are **not** expected to reproduce any maintainer lab (specific subnets, hostnames, or copied admin.conf files). If those conditions are not met, skip live cluster commands, say so, and use `uv run pytest` as the required bar.
+
+When the conditions **are** met:
+
+- Use the kubeconfig already on the development PC. Do **not** SSH to cluster nodes or copy kubeconfig during verification.
+- **Read-only smoke test:** `kubectl get nodes` and `kubectl config current-context`
+- **Non-interactive Roomlamp check:** load context metadata with the application code (do not print credentials)
+- **Interactive TUI:** `uv run roomlamp` is for a human terminal. Do not leave it running in the agent shell. Automated TUI checks stay in `uv run pytest`.
+
+**Maintainer lab example (not a project requirement):** a development PC on `10.0.0.1/22` with API server `https://10.0.0.1:6443` and `~/.kube/config`. Other contributors may use minikube, kind, a cloud cluster, or no cluster at all.
+
+Never dump kubeconfig contents, tokens, or certificate data.
+
 ---
 
 ## Tech stack and environment
@@ -155,13 +175,14 @@ When `docs/` later documents a command, prefer that documented command if it sti
 
 - **Permitted to suggest/run locally:**
   - `uv sync`
-  - `uv run roomlamp`
+  - `uv run roomlamp` (interactive; do not leave it blocking the agent shell)
   - `uv run pytest`
   - `uv run ruff check .`
   - `uv run ruff check --fix .`
   - `uv run ruff format .`
   - `uv run ruff format --check .`
   - `uv add` / `uv remove` only when a dependency change is required for the requested work
+  - Read-only kubectl against the local kubeconfig (`kubectl get`, `kubectl describe`, `kubectl config current-context`, `kubectl cluster-info`), and only when the development PC can reach that cluster. Do not apply, delete, or otherwise mutate cluster objects unless the user asked.
 - **Require human approval:**
   - Publishing releases (PyPI, GitHub Releases, container images)
   - Creating or modifying `.github/workflows/*`
@@ -220,7 +241,7 @@ When `docs/` later documents a command, prefer that documented command if it sti
 - **TUI-specific guidelines:**
   - Keep blocking Kubernetes I/O off the Textual event loop (`asyncio.to_thread` or `threading`)
   - Prefer keyboard-first workflows; document new key bindings
-  - Do not require a browser. Verify TUI behavior with tests and, when practical, by running `uv run roomlamp`
+  - Do not require a browser or SSH. `uv run pytest` is always required. Add a read-only `kubectl get nodes` and a non-interactive `load_cluster_info()` check only when the development PC can reach a cluster via kubeconfig. The interactive TUI is confirmed in a human Cursor Terminal.
   - Format Python with `uv run ruff format .` before committing
 
 ---
@@ -313,7 +334,7 @@ There is no `docs/contributing.md` or pull-request template yet. Use the rules b
 - **Local validation:**
   - Exact commands to reproduce lint/test results
   - Output showing successful execution
-  - For TUI changes: `uv run pytest` and, when practical, `uv run roomlamp`
+  - For TUI changes: `uv run pytest`. If the development PC can reach a cluster via kubeconfig, also `kubectl get nodes` and a non-interactive `load_cluster_info()` check
 - **CI expectations:**
   - If workflows exist under `.github/workflows/`, name which should pass
   - Otherwise, local `uv run ruff check .` and `uv run pytest` are the bar

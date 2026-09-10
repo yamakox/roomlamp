@@ -26,6 +26,17 @@ Headlamp's "create a ServiceAccount token" steps apply to its **in-cluster web U
 
 Do not print or log tokens, client keys, or certificate data from that file.
 
+Live cluster checks are optional. Use them only when the development PC can reach a Kubernetes API server **and** kubeconfig on that PC can control the cluster. External contributors do not need the maintainer lab (`10.0.0.1/22`, `https://10.0.0.1:6443`). If there is no reachable cluster, skip kubectl smoke tests and rely on `uv run pytest`.
+
+When those conditions are met, verify **without SSH**:
+
+```bash
+kubectl get nodes
+kubectl config current-context
+```
+
+Do not start `uv run roomlamp` in a way that blocks the agent. Humans run the TUI in the Cursor Terminal and quit with `q`.
+
 ## Headlamp source (local agents)
 
 From this repository root, the default clone is `../../github/headlamp` (that is, `<dev-root>/github/headlamp` next to `<dev-root>/python/roomlamp`). Override with `HEADLAMP_SRC` if the clone lives somewhere else. Cloud agents do not have this tree.
