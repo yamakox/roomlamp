@@ -39,6 +39,9 @@ version = "0.0.0"
 [tool.poetry-dynamic-versioning]
 enable = true
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [dependency-groups]
 dev = [
     "debugpy>=1.8.0",

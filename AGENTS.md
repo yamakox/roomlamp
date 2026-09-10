@@ -53,11 +53,22 @@ User → Terminal → Click CLI → Textual App → k8s client layer → Kuberne
                          (kubeconfig / official Python client)
 ```
 
-- Load cluster access from kubeconfig (default `~/.kube/config` and standard kubeconfig rules) unless the user specifies another approach.
+- Load cluster access from kubeconfig the same way kubectl does (`--kubeconfig`, `KUBECONFIG`, then `~/.kube/config`). Copying `/etc/kubernetes/admin.conf` to `~/.kube/config` is enough; `kubectl create token` is not required for this TUI.
 - Use the official synchronous `kubernetes` client.
 - Textual's event loop is asyncio. Run blocking client calls with Python stdlib concurrency (`asyncio.to_thread`, `threading`). Do not use `kubernetes-asyncio` or other third-party Kubernetes clients unless the user requests them.
 - Kubernetes API remains the source of truth. Prefer Watch-based updates over polling when implementing live views.
 - Honor Kubernetes RBAC: hide or disable actions the current credentials cannot perform, once that behavior is in scope.
+
+### Headlamp reference source (local agents)
+
+Cloud agents do not have Headlamp's tree. Local agents on any Linux, macOS, or Windows machine should use the following convention.
+
+This repository is expected to live at `<dev-root>/python/roomlamp`. A Headlamp clone is expected at `<dev-root>/github/headlamp`.
+
+- **Default path, relative to this repository root:** `../../github/headlamp`
+- **Override:** environment variable `HEADLAMP_SRC` (absolute path to the Headlamp clone)
+
+When implementing a feature, read the matching Headlamp code at that path. Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture.
 
 ---
 
@@ -75,18 +86,18 @@ User → Terminal → Click CLI → Textual App → k8s client layer → Kuberne
   - click>=8.5.0
   - python-dotenv>=1.2.0
   - textual>=8.2.0
-  - kubernetes>=36.0.3
+  - kubernetes>=36.0.0
 - **Reproduce locally:** Use the uv commands in "Primary entry points" and any workflow docs under `docs/` once they exist.
 
 ---
 
 ## Repo map
 
-This project uses the src layout. Only `src/roomlamp/__init__.py` exists today. Add new modules under the target layout below as features are implemented. Do not introduce `frontend/`, `backend/`, `app/`, or `plugins/` directories.
+This project uses the src layout. Add new modules under the target layout below as features are implemented. Do not introduce `frontend/`, `backend/`, `app/`, or `plugins/` directories. Do not scaffold unused packages (for example `ui/widgets/`, `k8s/resources.py`, `k8s/watch.py`) until that phase starts.
 
 - **`src/roomlamp/`** — application package. CLI entry is `roomlamp = "roomlamp:main"` in `./pyproject.toml`.
-  - `__init__.py` — package surface; current `main()` entry
-  - `__main__.py` — `python -m roomlamp` when added
+  - `__init__.py` — package surface; `main()` delegates to Click
+  - `__main__.py` — `python -m roomlamp`
   - `cli.py` — Click commands and launch options
   - `app.py` — Textual `App`
   - `config.py` — dotenv / runtime settings
@@ -101,6 +112,7 @@ This project uses the src layout. Only `src/roomlamp/__init__.py` exists today. 
     - `bindings.py` — key bindings
 - **`tests/`** — pytest suite (outside `src/`)
 - **`docs/`** — developer and user docs; reference specific files under `docs/` for workflows when they exist
+  - `docs/development/roadmap.md` — human-readable implementation process (phases 1–5). Update it when a phase starts or finishes. Commands in that file must match this document and `./pyproject.toml`.
 - **Project config (consult before changing or deleting):**
   - `.editorconfig`
   - `.markdownlint.json`
@@ -119,6 +131,7 @@ There is no `package.json`. Use uv with `./pyproject.toml`.
 ### Run
 
 - **Run the TUI:** `uv run roomlamp`
+- **Show CLI help:** `uv run roomlamp --help`
 
 ### Test
 
@@ -203,7 +216,7 @@ When `docs/` later documents a command, prefer that documented command if it sti
   - **Refactoring:** Ensure behavior remains unchanged, validate with existing tests
   - **Performance:** Measure before and after when the change is performance-motivated
   - **Security:** Treat kubeconfig, tokens, and cluster credentials as secrets; never log them
-  - **Documentation:** Keep it concise, accurate, and consistent with actual uv commands
+  - **Documentation:** Keep it concise, accurate, and consistent with actual uv commands. Keep `docs/development/roadmap.md` current so a human can follow the path from phase 1 through phase 5 without reading the chat history.
 - **TUI-specific guidelines:**
   - Keep blocking Kubernetes I/O off the Textual event loop (`asyncio.to_thread` or `threading`)
   - Prefer keyboard-first workflows; document new key bindings
@@ -319,7 +332,8 @@ There is no `docs/contributing.md` or pull-request template yet. Use the rules b
 6. `/src/roomlamp/__init__.py` — current CLI/TUI entry (`main`)
 7. `/.vscode/launch.json` — debugpy launch for the TUI
 8. `/LICENSE` — Apache-2.0
-9. `/docs/` — documentation tree (currently empty aside from `.gitkeep`)
+9. `/docs/development/roadmap.md` — implementation phases and kubeconfig notes
+10. Headlamp clone at `../../github/headlamp` (or `$HEADLAMP_SRC`) — local reference only
 
 ### Versioning guidance
 
