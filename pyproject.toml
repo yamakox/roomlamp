@@ -16,6 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "click>=8.5.0",
+    "kubernetes>=36.0.0",
     "python-dotenv>=1.2.0",
     "textual>=8.2.0",
 ]
