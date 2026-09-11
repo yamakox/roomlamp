@@ -12,6 +12,7 @@ from kubernetes.client import ApiClient, CoreV1Api
 from kubernetes.client.models import V1Pod
 
 from roomlamp.k8s.dump import dump_resource
+from roomlamp.k8s.exec import open_pod_exec as _open_pod_exec
 from roomlamp.k8s.logs import DEFAULT_TAIL_LINES
 from roomlamp.k8s.logs import read_pod_logs as _read_pod_logs
 from roomlamp.k8s.logs import watch_pod_logs as _watch_pod_logs
@@ -49,6 +50,7 @@ class PodDetail:
     containers: tuple[str, ...]
     container_names: tuple[str, ...] = ()
     default_container: str = ''
+    node_os: str | None = None
 
 
 class PodReader(Protocol):
@@ -70,6 +72,8 @@ class PodReader(Protocol):
         timestamps: bool = True,
         previous: bool = False,
     ) -> str: ...
+
+    def open_pod_exec(self, namespace: str, name: str, *, container: str, command: str) -> object: ...
 
 
 class ApiPodReader:
@@ -151,6 +155,15 @@ class ApiPodReader:
             on_open=on_open,
         )
 
+    def open_pod_exec(self, namespace: str, name: str, *, container: str, command: str) -> object:
+        return _open_pod_exec(
+            self._core,
+            namespace,
+            name,
+            container=container,
+            command=command,
+        )
+
 
 def summarize_pod(pod: V1Pod) -> PodSummary:
     meta = pod.metadata
@@ -193,7 +206,18 @@ def detail_pod(pod: V1Pod) -> PodDetail:
         containers=containers,
         container_names=names,
         default_container=default_container_name(pod),
+        node_os=pod_node_os(pod),
     )
+
+
+def pod_node_os(pod: V1Pod) -> str | None:
+    """Return kubernetes.io/os (or the beta key) from the pod node selector."""
+    spec = pod.spec
+    selector = spec.node_selector if spec is not None else None
+    if not selector:
+        return None
+    value = selector.get('kubernetes.io/os') or selector.get('beta.kubernetes.io/os')
+    return str(value) if value else None
 
 
 def pod_container_names(pod: V1Pod) -> tuple[str, ...]:

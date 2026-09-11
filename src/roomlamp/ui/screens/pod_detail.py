@@ -11,6 +11,7 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
 from roomlamp.k8s.resources import PodDetail
+from roomlamp.ui.screens.exec import PodExecScreen
 from roomlamp.ui.screens.logs import PodLogsScreen
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
 
@@ -19,6 +20,7 @@ class PodDetailScreen(Screen[None]):
     BINDINGS = [
         ('y', 'show_yaml', 'YAML'),
         ('l', 'show_logs', 'Logs'),
+        ('e', 'show_exec', 'Exec'),
         ('escape', 'app.pop_screen', 'Back'),
         ('backspace', 'app.pop_screen', 'Back'),
     ]
@@ -73,6 +75,21 @@ class PodDetailScreen(Screen[None]):
                 self.detail.container_names,
                 container,
                 self.enable_watch,
+            )
+        )
+
+    async def action_show_exec(self) -> None:
+        container = self.detail.default_container
+        if not container and self.detail.container_names:
+            container = self.detail.container_names[0]
+        await self.app.push_screen(
+            PodExecScreen(
+                self.cluster,
+                self.detail.namespace,
+                self.detail.name,
+                self.detail.container_names,
+                container,
+                self.detail.node_os,
             )
         )
 

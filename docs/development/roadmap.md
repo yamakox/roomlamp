@@ -60,6 +60,7 @@ Useful Headlamp files when adding features:
 - Pod logs: `frontend/src/lib/k8s/pod.ts`, `frontend/src/components/pod/Details.tsx`
 - YAML view: `frontend/src/components/common/Resource/ViewButton.tsx`
 - YAML edit / apply: `frontend/src/components/common/Resource/EditorDialog.tsx`, `frontend/src/lib/k8s/api/v1/apply.ts`
+- Pod exec: `frontend/src/lib/k8s/pod.ts`, `frontend/src/components/common/Terminal.tsx`, `frontend/src/components/pod/Details.tsx`
 - kubeconfig handling: `backend/pkg/kubeconfig/` (replace with the official Python client)
 
 ## Commands
@@ -157,14 +158,19 @@ tests/test_workloads.py
 
 - Read-only YAML dump from Pod and workload detail (`y`), with `managedFields` hidden (Headlamp's default)
 - Pod logs from Pod detail (`l`). Last 100 lines with timestamps; follows the stream when Watch is enabled. `c` picks a container (main, init, then ephemeral, same order as Headlamp)
-
-**This increment (YAML edit and apply):**
-
 - YAML from Pod and workload detail (`y`) is an editor. `ctrl+s` applies; `f8` dry-runs; `ctrl+r` reloads from the API; unchanged buffers are not sent
 - Apply matches Headlamp `apply.ts`: POST, then PUT on 409 Conflict or 403 Forbidden. `resourceVersion` is dropped for create and restored for replace. Namespaced objects without a namespace use the object's namespace (or `default`)
 - YAML and JSON (including multi-document YAML) go through the official client's `DynamicClient`. Blocking apply I/O stays off the Textual event loop (`asyncio.to_thread`)
 
-**Keys:** `y` YAML, `ctrl+s` Apply, `f8` Dry Run, `ctrl+r` refresh YAML, `l` logs (Pods), `c` container on the log screen, `escape` back.
+**This increment (Pod exec):**
+
+- Exec from Pod detail (`e`) opens an interactive TTY via the official client's `kubernetes.stream` (`connect_get_namespaced_pod_exec`)
+- Default container matches logs (running main, then running init, then the first spec name)
+- Shell fallback matches Headlamp `Terminal.tsx`: `bash`, `/bin/bash`, `sh`, `/bin/sh` on linux; `powershell.exe`, `cmd.exe` on windows; all of those when the OS is unknown (`kubernetes.io/os` / `beta.kubernetes.io/os` on the pod node selector)
+- `f2` picks a container (not `c`, so typing `c` in the shell still works). `ctrl+]` detaches; `escape` and `q` go to the remote TTY. A successful process exit closes the screen. After every shell fails, Enter reconnects
+- Blocking websocket I/O stays off the Textual event loop (background thread). Output is shown as a text log (ANSI stripped); this is not xterm.js, so full-screen tools such as vim are out of scope here
+
+**Keys:** `y` YAML, `ctrl+s` Apply, `f8` Dry Run, `ctrl+r` refresh YAML, `l` logs (Pods), `c` container on the log screen, `e` exec (Pods), `f2` container on the exec screen, `ctrl+]` detach exec, `escape` back (not on the exec TTY).
 
 **Layout:**
 
@@ -172,15 +178,20 @@ tests/test_workloads.py
 src/roomlamp/k8s/dump.py
 src/roomlamp/k8s/logs.py
 src/roomlamp/k8s/apply.py
+src/roomlamp/k8s/exec.py
 src/roomlamp/ui/screens/yaml_view.py
 src/roomlamp/ui/screens/logs.py
+src/roomlamp/ui/screens/exec.py
+src/roomlamp/ui/screens/containers.py
 tests/test_k8s_dump.py
 tests/test_k8s_logs.py
 tests/test_k8s_apply.py
+tests/test_k8s_exec.py
 tests/test_yaml_view.py
+tests/test_exec.py
 ```
 
-**Not in this increment:** exec, delete, RBAC gating, JSON Patch (Headlamp EditButton), server-side apply, create-from-empty YAML, live conflict watch in the editor, JSON log prettify, workload-aggregated logs, previous-container logs.
+**Not in this increment:** attach, debug / ephemeral containers, delete, RBAC gating, JSON Patch (Headlamp EditButton), server-side apply, create-from-empty YAML, live conflict watch in the editor, JSON log prettify, workload-aggregated logs, previous-container logs, a full VT/xterm emulator.
 
 ### 5. Wider catalog — planned
 
@@ -193,5 +204,5 @@ tests/test_yaml_view.py
 | 1. Launch skeleton | Done |
 | 2. First read path | Done |
 | 3. Common workloads | Done |
-| 4. Operator actions | In progress (logs + YAML view + apply) |
+| 4. Operator actions | In progress (logs + YAML view + apply + exec) |
 | 5. Wider catalog | Planned |

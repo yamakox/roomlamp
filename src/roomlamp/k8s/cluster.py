@@ -14,7 +14,7 @@ from roomlamp.k8s.workloads import ApiWorkloadReader
 
 
 class ClusterAccess(ApiPodReader, ApiPodWatcher, ApiWorkloadReader, ApiWorkloadWatcher):
-    """Read, watch, and apply Pods and common workloads with one shared API client."""
+    """Read, watch, apply, and exec Pods and common workloads with one shared API client."""
 
     def __init__(self, api_client: ApiClient) -> None:
         ApiPodReader.__init__(self, api_client)

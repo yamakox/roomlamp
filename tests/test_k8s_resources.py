@@ -12,7 +12,7 @@ from kubernetes.client.models import (
     V1PodStatus,
 )
 
-from roomlamp.k8s.resources import default_container_name, detail_pod, pod_container_names, summarize_pod
+from roomlamp.k8s.resources import default_container_name, detail_pod, pod_container_names, pod_node_os, summarize_pod
 from roomlamp.k8s.watch import apply_watch_event
 
 
@@ -95,6 +95,17 @@ def test_pod_container_names_include_init_and_prefer_running() -> None:
         )
     ]
     assert default_container_name(waiting) == 'init'
+
+
+def test_pod_node_os_from_node_selector() -> None:
+    pod = _pod()
+    assert pod_node_os(pod) is None
+    assert detail_pod(pod).node_os is None
+    pod.spec.node_selector = {'kubernetes.io/os': 'linux'}
+    assert pod_node_os(pod) == 'linux'
+    assert detail_pod(pod).node_os == 'linux'
+    pod.spec.node_selector = {'beta.kubernetes.io/os': 'windows'}
+    assert pod_node_os(pod) == 'windows'
 
 
 def test_apply_watch_event_add_modify_delete() -> None:

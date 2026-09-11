@@ -9,11 +9,11 @@ from typing import Any
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.message import Message
-from textual.screen import ModalScreen, Screen
-from textual.widgets import Footer, Header, Label, Log, OptionList, Static
-from textual.widgets.option_list import Option
+from textual.screen import Screen
+from textual.widgets import Footer, Header, Log, Static
 
 from roomlamp.k8s.logs import DEFAULT_TAIL_LINES, close_log_stream, interrupt_log_stream
+from roomlamp.ui.screens.containers import ContainerScreen
 
 
 class PodLogLine(Message):
@@ -26,42 +26,6 @@ class PodLogStatus(Message):
     def __init__(self, message: str) -> None:
         super().__init__()
         self.message = message
-
-
-class ContainerScreen(ModalScreen[str | None]):
-    BINDINGS = [('escape', 'cancel', 'Cancel')]
-
-    def __init__(self, containers: tuple[str, ...], current: str) -> None:
-        super().__init__()
-        self.containers = containers
-        self.current = current
-
-    def compose(self) -> ComposeResult:
-        options = []
-        for name in self.containers:
-            mark = ' (current)' if name == self.current else ''
-            options.append(Option(f'{name}{mark}', id=name))
-        yield Vertical(
-            Label('Select container'),
-            OptionList(*options, id='container-list'),
-            id='container-dialog',
-        )
-
-    def on_mount(self) -> None:
-        highlighted = 0
-        if self.current in self.containers:
-            highlighted = self.containers.index(self.current)
-        self.query_one('#container-list', OptionList).highlighted = highlighted
-
-    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
-        option_id = event.option_id
-        if option_id is None:
-            self.dismiss(None)
-            return
-        self.dismiss(str(option_id))
-
-    def action_cancel(self) -> None:
-        self.dismiss(None)
 
 
 class PodLogsScreen(Screen[None]):
