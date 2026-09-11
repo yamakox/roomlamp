@@ -126,9 +126,10 @@ This project uses the src layout. Add new modules under the target layout below 
     - `context.py` — current context / cluster
     - `cluster.py` — live `ClusterAccess` (reader + watcher)
     - `resources.py` — namespace and Pod list / get
-    - `watch.py` — Pod Watch streams
+    - `workloads.py` — Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob
+    - `watch.py` — Pod and workload Watch streams
   - `ui/` — TUI (Headlamp frontend equivalent)
-    - `screens/` — home, Pod list, Pod detail, namespace picker
+    - `screens/` — home, Pod list/detail, workload list/detail, namespace picker, kind picker
     - `widgets/` — reusable widgets (add when a second consumer needs one)
     - `bindings.py` — shared key bindings (add when bindings are no longer screen-local)
 - **`tests/`** — pytest suite (outside `src/`)

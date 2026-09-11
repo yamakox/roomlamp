@@ -8,12 +8,17 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
 from roomlamp.k8s.context import ClusterInfo
+from roomlamp.k8s.workloads import POD_KIND
 
 
 class HomeScreen(Screen[None]):
     """Show which kubeconfig context Roomlamp will use."""
 
-    BINDINGS = [('p', 'show_pods', 'Pods'), ('escape', 'back', 'Back')]
+    BINDINGS = [
+        ('p', 'show_pods', 'Pods'),
+        ('w', 'pick_kind', 'Workloads'),
+        ('escape', 'back', 'Back'),
+    ]
 
     def __init__(self, info: ClusterInfo) -> None:
         super().__init__()
@@ -24,19 +29,35 @@ class HomeScreen(Screen[None]):
             self.app.pop_screen()
 
     def action_show_pods(self) -> None:
+        self._open_kind(POD_KIND)
+
+    def action_pick_kind(self) -> None:
+        if getattr(self.app, 'cluster', None) is None or not self.info.ok:
+            return
+        from roomlamp.ui.screens.kinds import WorkloadKindScreen
+
+        self.app.push_screen(WorkloadKindScreen(POD_KIND), callback=self._on_kind_chosen)
+
+    def _on_kind_chosen(self, chosen: str | None) -> None:
+        if chosen is None:
+            return
+        self._open_kind(chosen)
+
+    def _open_kind(self, kind: str) -> None:
         app = self.app
         cluster = getattr(app, 'cluster', None)
         if cluster is None or not self.info.ok:
             return
-        from roomlamp.ui.screens.pods import PodListScreen
+        from roomlamp.ui.screens.workloads import show_kind_list
 
-        app.push_screen(
-            PodListScreen(
-                self.info,
-                cluster,
-                namespace=self.info.namespace or 'default',
-                enable_watch=getattr(app, 'enable_watch', True),
-            )
+        show_kind_list(
+            app,
+            self.info,
+            cluster,
+            kind,
+            self.info.namespace or 'default',
+            getattr(app, 'enable_watch', True),
+            replace=False,
         )
 
     def on_mount(self) -> None:

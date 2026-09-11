@@ -54,6 +54,8 @@ From this repository root, the default clone is `../../github/headlamp` (that is
 Useful Headlamp files when adding features:
 
 - Sidebar and navigation: `frontend/src/components/Sidebar/useSidebarItems.tsx`
+- Workload overview: `frontend/src/components/workload/`
+- Workload lists: `frontend/src/components/deployments/List.tsx`, `replicaset/List.tsx`, `statefulset/List.tsx`, `daemonset/List.tsx`, `job/List.tsx`, `cronjob/List.tsx`
 - Resource models: `frontend/src/lib/k8s/`
 - kubeconfig handling: `backend/pkg/kubeconfig/` (replace with the official Python client)
 
@@ -118,9 +120,31 @@ docs/development/roadmap.md
 
 **Not in this phase:** other workload types, logs, exec, YAML edit, apply/delete, in-TUI context switch.
 
-### 3. Common workloads — planned
+### 3. Common workloads — done
 
-**Goal:** reuse the list/detail pattern for Deployment, ReplicaSet, StatefulSet, Job, and similar workload objects (see Headlamp `frontend/src/components/workload/`).
+**Goal:** reuse the list/detail pattern for Deployment, ReplicaSet, StatefulSet, Job, and similar workload objects (see Headlamp `frontend/src/components/workload/` and the Workloads sidebar).
+
+**What shipped:**
+
+- Apps and batch reads through the official client (`k8s/workloads.py`); Watch shares the Pod watch loop (`k8s/watch.py`)
+- TUI: `w` picks Pods, Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, or CronJobs
+- List columns follow Headlamp plus `kubectl get` (Ready / replica counts, Job completions, CronJob schedule)
+- Read-only detail with kind-specific fields (selector, strategy, Headlamp extraInfo where it maps cleanly)
+- Default screen is still the Pod list from phase 2
+
+**Keys:** `w` workload type, `p` pods, plus `enter` / `n` / `c` / `r` / `escape` / `q` from phase 2.
+
+**Layout:**
+
+```text
+src/roomlamp/k8s/workloads.py
+src/roomlamp/ui/screens/workloads.py
+src/roomlamp/ui/screens/kinds.py
+tests/test_k8s_workloads.py
+tests/test_workloads.py
+```
+
+**Not in this phase:** JobSet, LeaderWorkerSet, logs, exec, YAML edit, apply/delete, in-TUI context switch.
 
 ### 4. Operator actions — planned
 
@@ -136,6 +160,6 @@ docs/development/roadmap.md
 | --- | --- |
 | 1. Launch skeleton | Done |
 | 2. First read path | Done |
-| 3. Common workloads | Planned |
+| 3. Common workloads | Done |
 | 4. Operator actions | Planned |
 | 5. Wider catalog | Planned |
