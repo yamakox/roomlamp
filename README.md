@@ -2,7 +2,7 @@
 
 Roomlamp is a Kubernetes TUI inspired by the core features of [Headlamp](https://headlamp.dev/).
 
-It is in early development. The current build lists Pods and common workloads (Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, CronJobs) with Watch-backed tables, detail views, namespace switching, YAML edit/apply, Pod logs, and Pod exec.
+It is in early development. The current build lists Pods and common workloads (Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, CronJobs) with Watch-backed tables, detail views, namespace switching, YAML edit/apply, Pod logs, Pod exec, and delete.
 
 ## How to Use
 

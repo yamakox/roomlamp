@@ -14,7 +14,9 @@ from textual.widgets import DataTable, Footer, Header, Static
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodSummary
 from roomlamp.k8s.watch import apply_watch_event
+from roomlamp.k8s.delete import DeletedObject
 from roomlamp.k8s.workloads import POD_KIND
+from roomlamp.ui.screens.delete import request_delete, selected_row_key
 from roomlamp.ui.screens.home import HomeScreen
 from roomlamp.ui.screens.kinds import WorkloadKindScreen
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
@@ -54,6 +56,7 @@ class PodListScreen(Screen[None]):
         ('n', 'pick_namespace', 'Namespace'),
         ('w', 'pick_kind', 'Workloads'),
         ('c', 'show_cluster', 'Cluster'),
+        ('d', 'delete', 'Delete'),
         ('r', 'refresh', 'Refresh'),
     ]
 
@@ -152,6 +155,26 @@ class PodListScreen(Screen[None]):
             await self._load_initial()
         else:
             self._load_sync()
+
+    def action_delete(self) -> None:
+        key = selected_row_key(self.query_one('#pods', DataTable))
+        if not key:
+            return
+        namespace, name = key.split('/', 1)
+        request_delete(
+            self,
+            self.cluster,
+            POD_KIND,
+            name,
+            namespace,
+            allow_evict=True,
+            on_success=self._on_deleted,
+        )
+
+    def _on_deleted(self, deleted: DeletedObject) -> None:
+        if deleted.namespace:
+            self._pods.pop(f'{deleted.namespace}/{deleted.name}', None)
+            self._render_table()
 
     def _load_sync(self) -> None:
         try:

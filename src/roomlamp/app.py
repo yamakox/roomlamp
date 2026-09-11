@@ -28,7 +28,7 @@ class RoomlampApp(App[None]):
         margin-bottom: 1;
     }
 
-    #namespace-dialog, #kind-dialog, #container-dialog {
+    #namespace-dialog, #kind-dialog, #container-dialog, #delete-dialog {
         width: 60;
         height: auto;
         padding: 1 2;

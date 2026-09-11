@@ -132,8 +132,9 @@ This project uses the src layout. Add new modules under the target layout below 
       - `logs.py` — Pod log snapshot and follow
       - `apply.py` — YAML/JSON apply (POST, then PUT on 409/403)
       - `exec.py` — Pod exec TTY (`kubernetes.stream`)
+      - `delete.py` — Pod/workload delete (`DynamicClient`) and Pod evict (`pods/eviction`)
   - `ui/` — TUI (Headlamp frontend equivalent)
-    - `screens/` — home, Pod list/detail, workload list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker
+    - `screens/` — home, Pod list/detail, workload list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
     - `widgets/` — reusable widgets (add when a second consumer needs one)
     - `bindings.py` — shared key bindings (add when bindings are no longer screen-local)
 - **`tests/`** — pytest suite (outside `src/`)

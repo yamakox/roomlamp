@@ -11,6 +11,8 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
 from roomlamp.k8s.resources import PodDetail
+from roomlamp.k8s.workloads import POD_KIND
+from roomlamp.ui.screens.delete import request_delete
 from roomlamp.ui.screens.exec import PodExecScreen
 from roomlamp.ui.screens.logs import PodLogsScreen
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
@@ -21,6 +23,7 @@ class PodDetailScreen(Screen[None]):
         ('y', 'show_yaml', 'YAML'),
         ('l', 'show_logs', 'Logs'),
         ('e', 'show_exec', 'Exec'),
+        ('d', 'delete', 'Delete'),
         ('escape', 'app.pop_screen', 'Back'),
         ('backspace', 'app.pop_screen', 'Back'),
     ]
@@ -91,6 +94,17 @@ class PodDetailScreen(Screen[None]):
                 container,
                 self.detail.node_os,
             )
+        )
+
+    def action_delete(self) -> None:
+        request_delete(
+            self,
+            self.cluster,
+            POD_KIND,
+            self.detail.name,
+            self.detail.namespace,
+            allow_evict=True,
+            on_success=lambda _deleted: self.app.pop_screen(),
         )
 
 

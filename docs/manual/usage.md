@@ -1,6 +1,6 @@
 # User manual
 
-Roomlamp is a terminal UI for Kubernetes. This page describes the **current workload lists**: Pods plus Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, and CronJob. You can switch namespaces and workload types. From a detail view you can edit YAML and apply it, open Pod logs, or exec into a Pod.
+Roomlamp is a terminal UI for Kubernetes. This page describes the **current workload lists**: Pods plus Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, and CronJob. You can switch namespaces and workload types. From a detail view you can edit YAML and apply it, open Pod logs, exec into a Pod, or delete the object.
 
 ## Prerequisites
 
@@ -71,6 +71,7 @@ The TUI does not display tokens, client keys, or certificate data.
 | `y` | Edit YAML (from a detail screen) |
 | `l` | View Pod logs (from Pod detail) |
 | `e` | Exec into a Pod (from Pod detail) |
+| `d` | Delete the selected item (list or detail). Confirm, then Delete / Force delete / Evict (Pods) |
 | `f2` | Pick a container (on Pod exec) |
 | `ctrl+]` | Detach from Pod exec |
 | `r` | Reload the current list or logs |
@@ -94,12 +95,12 @@ List columns follow Headlamp and `kubectl get` for that kind. Click a column hea
 | Jobs | Namespace, Name, Completions, Conditions, Duration, Age |
 | CronJobs | Namespace, Name, Schedule, Suspend, Active, Last Schedule, Age |
 
-Detail views summarize metadata, kind-specific status fields, labels, and container image lines from the pod template. From a detail screen, `y` opens the live object as YAML (`managedFields` hidden) in an editor. `ctrl+s` applies (POST, then PUT if the object already exists, matching Headlamp); `f8` dry-runs; `ctrl+r` reloads from the API. From a Pod, `l` opens logs for the default container (a running main container if there is one, matching Headlamp). The log view tails 100 lines with timestamps and follows the stream while the screen is open. `e` opens an interactive exec session in that same default container. Roomlamp tries `bash`, then `/bin/bash`, then `sh`, then `/bin/sh` (Headlamp's linux list; windows pods get `powershell.exe` / `cmd.exe`). `f2` switches container; `ctrl+]` detaches. `escape` and `q` are sent to the shell, not used to leave the screen.
+Detail views summarize metadata, kind-specific status fields, labels, and container image lines from the pod template. From a detail screen, `y` opens the live object as YAML (`managedFields` hidden) in an editor. `ctrl+s` applies (POST, then PUT if the object already exists, matching Headlamp); `f8` dry-runs; `ctrl+r` reloads from the API. From a Pod, `l` opens logs for the default container (a running main container if there is one, matching Headlamp). The log view tails 100 lines with timestamps and follows the stream while the screen is open. `e` opens an interactive exec session in that same default container. Roomlamp tries `bash`, then `/bin/bash`, then `sh`, then `/bin/sh` (Headlamp's linux list; windows pods get `powershell.exe` / `cmd.exe`). `f2` switches container; `ctrl+]` detaches. `escape` and `q` are sent to the shell, not used to leave the screen. `d` on a list or detail screen asks for confirmation, then deletes the object (Jobs use Background deletion; Force delete sets a zero grace period). On Pods, Evict is also offered (`pods/eviction`).
 
 ## Current limitations
 
 - No JobSet or LeaderWorkerSet lists
-- No attach, delete, or RBAC gating of actions
+- No attach or RBAC gating of actions
 - Exec is a TTY text log (ANSI stripped), not a full terminal emulator; tools such as vim or top may not render correctly
 - No aggregated logs from a Deployment or other workload detail
 - No plugin system

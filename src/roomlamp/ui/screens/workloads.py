@@ -12,9 +12,11 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
 from roomlamp.k8s.context import ClusterInfo
+from roomlamp.k8s.delete import DeletedObject
 from roomlamp.k8s.resources import ALL_NAMESPACES
 from roomlamp.k8s.watch import apply_watch_event
 from roomlamp.k8s.workloads import KIND_LABELS, KIND_SPECS, POD_KIND, WorkloadDetail, WorkloadSummary
+from roomlamp.ui.screens.delete import request_delete, selected_row_key
 from roomlamp.ui.screens.kinds import WorkloadKindScreen
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
@@ -62,6 +64,7 @@ class WorkloadListScreen(Screen[None]):
         ('w', 'pick_kind', 'Workloads'),
         ('p', 'show_pods', 'Pods'),
         ('c', 'show_cluster', 'Cluster'),
+        ('d', 'delete', 'Delete'),
         ('r', 'refresh', 'Refresh'),
     ]
 
@@ -174,6 +177,25 @@ class WorkloadListScreen(Screen[None]):
         else:
             self._load_sync()
 
+    def action_delete(self) -> None:
+        key = selected_row_key(self.query_one('#workloads', DataTable))
+        if not key:
+            return
+        namespace, name = key.split('/', 1)
+        request_delete(
+            self,
+            self.cluster,
+            self.kind,
+            name,
+            namespace,
+            on_success=self._on_deleted,
+        )
+
+    def _on_deleted(self, deleted: DeletedObject) -> None:
+        if deleted.namespace:
+            self._items.pop(f'{deleted.namespace}/{deleted.name}', None)
+            self._render_table()
+
     def _load_sync(self) -> None:
         try:
             namespaces, items = self._fetch()
@@ -266,6 +288,7 @@ class WorkloadListScreen(Screen[None]):
 class WorkloadDetailScreen(Screen[None]):
     BINDINGS = [
         ('y', 'show_yaml', 'YAML'),
+        ('d', 'delete', 'Delete'),
         ('escape', 'app.pop_screen', 'Back'),
         ('backspace', 'app.pop_screen', 'Back'),
     ]
@@ -310,6 +333,16 @@ class WorkloadDetailScreen(Screen[None]):
                     body, dry_run=dry_run, default_namespace=namespace
                 ),
             )
+        )
+
+    def action_delete(self) -> None:
+        request_delete(
+            self,
+            self.cluster,
+            self.detail.kind,
+            self.detail.name,
+            self.detail.namespace,
+            on_success=lambda _deleted: self.app.pop_screen(),
         )
 
 
