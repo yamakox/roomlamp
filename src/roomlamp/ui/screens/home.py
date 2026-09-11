@@ -13,9 +13,31 @@ from roomlamp.k8s.context import ClusterInfo
 class HomeScreen(Screen[None]):
     """Show which kubeconfig context Roomlamp will use."""
 
+    BINDINGS = [('p', 'show_pods', 'Pods'), ('escape', 'back', 'Back')]
+
     def __init__(self, info: ClusterInfo) -> None:
         super().__init__()
         self.info = info
+
+    def action_back(self) -> None:
+        if len(self.app.screen_stack) > 1:
+            self.app.pop_screen()
+
+    def action_show_pods(self) -> None:
+        app = self.app
+        cluster = getattr(app, 'cluster', None)
+        if cluster is None or not self.info.ok:
+            return
+        from roomlamp.ui.screens.pods import PodListScreen
+
+        app.push_screen(
+            PodListScreen(
+                self.info,
+                cluster,
+                namespace=self.info.namespace or 'default',
+                enable_watch=getattr(app, 'enable_watch', True),
+            )
+        )
 
     def on_mount(self) -> None:
         self.sub_title = self.info.context_name or 'no context'

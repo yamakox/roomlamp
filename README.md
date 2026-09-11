@@ -2,7 +2,7 @@
 
 Roomlamp is a Kubernetes TUI inspired by the core features of [Headlamp](https://headlamp.dev/).
 
-It is in early development. The current build is a launch skeleton: it loads your kubeconfig and shows the current context. It does not list workloads or change cluster objects yet.
+It is in early development. The current build lists Pods in the current namespace (Watch-backed), opens a read-only detail view, and lets you switch namespaces. It does not edit cluster objects yet.
 
 ## How to Use
 

@@ -113,7 +113,7 @@ Never dump kubeconfig contents, tokens, or certificate data.
 
 ## Repo map
 
-This project uses the src layout. Add new modules under the target layout below as features are implemented. Do not introduce `frontend/`, `backend/`, `app/`, or `plugins/` directories. Do not scaffold unused packages (for example `ui/widgets/`, `k8s/resources.py`, `k8s/watch.py`) until that phase starts.
+This project uses the src layout. Add new modules under the target layout below as features are implemented. Do not introduce `frontend/`, `backend/`, `app/`, or `plugins/` directories. Do not scaffold unused packages (for example `ui/widgets/`, `bindings.py`) until that work starts.
 
 - **`src/roomlamp/`** — application package. CLI entry is `roomlamp = "roomlamp:main"` in `./pyproject.toml`.
   - `__init__.py` — package surface; `main()` delegates to Click
@@ -122,14 +122,15 @@ This project uses the src layout. Add new modules under the target layout below 
   - `app.py` — Textual `App`
   - `config.py` — dotenv / runtime settings
   - `k8s/` — cluster access (Headlamp backend equivalent)
-    - `client.py` — kubeconfig loading and API client
+    - `client.py` — kubeconfig path and `ApiClient` (`persist_config=False`)
     - `context.py` — current context / cluster
-    - `resources.py` — list / get / patch and related calls
-    - `watch.py` — Watch streams
+    - `cluster.py` — live `ClusterAccess` (reader + watcher)
+    - `resources.py` — namespace and Pod list / get
+    - `watch.py` — Pod Watch streams
   - `ui/` — TUI (Headlamp frontend equivalent)
-    - `screens/` — full-screen views
-    - `widgets/` — reusable widgets
-    - `bindings.py` — key bindings
+    - `screens/` — home, Pod list, Pod detail, namespace picker
+    - `widgets/` — reusable widgets (add when a second consumer needs one)
+    - `bindings.py` — shared key bindings (add when bindings are no longer screen-local)
 - **`tests/`** — pytest suite (outside `src/`)
 - **`docs/`** — developer and user docs; reference specific files under `docs/` for workflows when they exist
   - `docs/development/roadmap.md` — human-readable implementation process (phases 1–5). Update it when a phase starts or finishes. Commands in that file must match this document and `./pyproject.toml`.
