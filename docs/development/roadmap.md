@@ -211,9 +211,93 @@ tests/test_auth.py
 
 **Not in this phase:** attach, debug / ephemeral containers, JSON Patch (Headlamp EditButton), server-side apply, create-from-empty YAML, live conflict watch in the editor, JSON log prettify, workload-aggregated logs, previous-container logs, a full VT/xterm emulator, multi-select delete, Namespace type-to-confirm (Namespaces are not in the catalog yet).
 
-### 5. Wider catalog — planned
+## Later phases (Headlamp sidebar groups)
 
-**Goal:** Services, ConfigMaps, Ingress, and other objects as requested. Multi-cluster via kubeconfig context switching. Plugins, charts, and in-cluster OIDC web login stay out of scope unless requested.
+Phases 1–4 covered the **Workloads** sidebar (Pods and common controllers) plus operator actions on those objects. From here, one Headlamp in-cluster sidebar group is one phase. Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse the list / detail / Watch / YAML / delete / RBAC path already shipped.
+
+**How to run a later phase** (same rules as Headlamp and Roomlamp `AGENTS.md`):
+
+- Small increments. If a group is large, ship the most-used kinds first (the way phase 2 shipped Pods before phase 3 shipped the other workloads).
+- Read the matching Headlamp list/detail under `frontend/src/components/` and the model under `frontend/src/lib/k8s/`. Do not import React, plugins, or the Go proxy.
+- Prefer Watch over polling. Keep blocking API calls off the Textual event loop.
+- Hide or disable actions the current kubeconfig cannot perform (phase 4 SSAR).
+- Do not add kinds, screens, or packages until that increment starts. Do not freeze this list as a product checklist; skip or split a group when the user asks.
+- Plugins, Helm charts, the resource map, Electron-only port-forward, Advanced Search, Scheduling (alpha), and in-cluster OIDC stay out of scope unless requested.
+
+Headlamp sidebar order after Workloads (`frontend/src/components/Sidebar/useSidebarItems.tsx`): Storage, Network, Gateway, Security, Configuration, then Custom Resources. Cluster (Namespaces / Nodes) sits above Workloads in Headlamp; Roomlamp already has a namespace picker, so Namespace/Node **objects** wait until a later cluster-catalog phase. JobSet and LeaderWorkerSet stay out of Workloads until requested.
+
+**Priority:**
+
+- **Normal** — ship in that phase (first increment, then the rest of the group's Normal kinds).
+- **Low** — skip unless the user asks. Do not start a Low kind while Normal work in the same phase is unfinished.
+
+Low kinds (do not implement unless requested):
+
+- Storage: VolumeAttributesClass
+- Network: IngressClass, NetworkPolicy (Port Forwarding stays out of scope)
+- Gateway: GRPCRoute, TCPRoute, UDPRoute, ReferenceGrant, BackendTLSPolicy, BackendTrafficPolicy
+- Configuration: HPA, VPA, PodDisruptionBudget, ResourceQuota, LimitRange, PriorityClass, RuntimeClass, Lease, MutatingWebhookConfiguration, ValidatingWebhookConfiguration
+- Custom Resources (the Headlamp CRD sidebar)
+
+Ingress stays **Normal**: it is still the common HTTP front for Service / Endpoints, and it was in the old wider-catalog goal. Listener TLS for Gateway API lives on Gateway / HTTPRoute, not on BackendTLSPolicy.
+
+### 5. Storage — planned
+
+**Goal:** PersistentVolumeClaim, PersistentVolume, and StorageClass lists and details (Headlamp Storage).
+
+**Why this next:** it is the next sidebar group after Workloads. Claims are namespaced; volumes and classes are cluster-scoped — a small, clear extension of the existing table.
+
+**First increment:** PVC list/detail + Watch, YAML / delete / RBAC reused. Then PV and StorageClass.
+
+**Low:** VolumeAttributesClass.
+
+**Not in this phase:** CSI extras beyond Headlamp's Storage subList, snapshots, other sidebar groups.
+
+### 6. Network — planned
+
+**Goal:** Headlamp Network kinds. Start with Service. Then Endpoints and EndpointSlices (already used in this lab). Then Ingress.
+
+**Low:** IngressClass, NetworkPolicy.
+
+**Not in this phase:** Port Forwarding (Headlamp hides it except in Electron). Gateway API belongs in phase 7.
+
+### 7. Gateway — planned
+
+**Goal:** Gateway API objects from Headlamp's Gateway (beta) group, when the cluster has those CRDs.
+
+**First increment:** Gateway, GatewayClass, and HTTPRoute. Hide kinds the API does not serve.
+
+**Low:** GRPCRoute, TCPRoute, UDPRoute, ReferenceGrant, BackendTLSPolicy, BackendTrafficPolicy.
+
+**Not in this phase:** installing Gateway CRDs.
+
+### 8. Security — planned
+
+**Goal:** ServiceAccount, Role, and RoleBinding (Headlamp Security subList).
+
+**Not in this phase:** ClusterRole / ClusterRoleBinding unless requested (they are not on Headlamp's Security subList). Token create/show UI.
+
+### 9. Configuration — planned
+
+**Goal:** ConfigMap first, then Secret.
+
+**Low:** HPA, VPA, PodDisruptionBudget, ResourceQuota, LimitRange, PriorityClass, RuntimeClass, Lease, MutatingWebhookConfiguration, ValidatingWebhookConfiguration.
+
+**Not in this phase:** decoding or copying Secret data into logs. Keep Secret bytes off the status line.
+
+### 10. Cluster catalog — planned
+
+**Goal:** Namespace and Node as catalog objects (Headlamp Cluster subList), including Namespace type-to-confirm delete if delete stays in scope.
+
+**Not in this phase:** Advanced Search, the resource map, replacing the existing namespace picker.
+
+### 11. Kubeconfig contexts — planned
+
+**Goal:** switch cluster context inside the TUI from kubeconfig, the same way kubectl uses contexts. This is not a Headlamp sidebar group; it replaces Headlamp's multi-cluster chooser for a local process.
+
+**Not in this phase:** plugins, charts, in-cluster OIDC web login.
+
+Custom Resources stay **Low** and have no phase until requested.
 
 ## Status
 
@@ -223,4 +307,10 @@ tests/test_auth.py
 | 2. First read path | Done |
 | 3. Common workloads | Done |
 | 4. Operator actions | Done |
-| 5. Wider catalog | Planned |
+| 5. Storage | Planned |
+| 6. Network | Planned |
+| 7. Gateway | Planned |
+| 8. Security | Planned |
+| 9. Configuration | Planned |
+| 10. Cluster catalog | Planned |
+| 11. Kubeconfig contexts | Planned |
