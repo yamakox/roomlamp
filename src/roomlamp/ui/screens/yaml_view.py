@@ -10,7 +10,8 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Footer, Header, TextArea
 
-from roomlamp.k8s.apply import AppliedObject, apply_error_message
+from roomlamp.k8s.apply import AppliedObject
+from roomlamp.k8s.errors import api_error_message
 
 ApplyFn = Callable[..., Sequence[AppliedObject]]
 
@@ -29,19 +30,32 @@ class YamlViewScreen(Screen[None]):
         text: str,
         reload: Callable[[], str] | None = None,
         apply: ApplyFn | None = None,
+        *,
+        can_apply: bool = True,
     ) -> None:
         super().__init__()
         self._title = title
         self._original = text
         self._reload = reload
         self._apply = apply
+        self._can_apply = can_apply and apply is not None
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        if action in {'apply', 'dry_run'} and not self._can_apply:
+            return False
+        return True
 
     def on_mount(self) -> None:
         self.sub_title = self._title
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield TextArea.code_editor(self._original, language='yaml', id='yaml-view')
+        yield TextArea.code_editor(
+            self._original,
+            language='yaml',
+            read_only=not self._can_apply,
+            id='yaml-view',
+        )
         yield Footer()
 
     async def action_apply(self) -> None:
@@ -56,14 +70,13 @@ class YamlViewScreen(Screen[None]):
         try:
             text = await asyncio.to_thread(self._reload)
         except Exception as exc:
-            self.notify(str(exc), severity='error')
+            self.notify(api_error_message(exc), severity='error')
             return
         self._original = text
         self.query_one('#yaml-view', TextArea).load_text(text)
 
     async def _run_apply(self, *, dry_run: bool) -> None:
-        if self._apply is None:
-            self.notify('Apply is not available', severity='error')
+        if not self._can_apply or self._apply is None:
             return
         text = self.query_one('#yaml-view', TextArea).text
         if text == self._original:
@@ -72,7 +85,7 @@ class YamlViewScreen(Screen[None]):
         try:
             applied = await asyncio.to_thread(self._apply, text, dry_run)
         except Exception as exc:
-            self.notify(apply_error_message(exc), severity='error')
+            self.notify(api_error_message(exc), severity='error')
             return
         names = ', '.join(item.label for item in applied) or 'resource'
         if dry_run:

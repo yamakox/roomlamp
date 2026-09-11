@@ -36,20 +36,26 @@ class DeleteConfirmScreen(ModalScreen[DeleteChoice | None]):
         name: str,
         namespace: str | None,
         *,
+        allow_delete: bool = True,
         allow_evict: bool = False,
     ) -> None:
         super().__init__()
         self.item_kind = kind
         self.item_name = name
         self.item_namespace = namespace
+        self.allow_delete = allow_delete
         self.allow_evict = allow_evict
 
     def compose(self) -> ComposeResult:
         target = f'{self.item_namespace}/{self.item_name}' if self.item_namespace else self.item_name
-        options = [
-            Option('Delete', id=OPTION_DELETE),
-            Option('Force delete', id=OPTION_FORCE),
-        ]
+        options: list[Option] = []
+        if self.allow_delete:
+            options.extend(
+                [
+                    Option('Delete', id=OPTION_DELETE),
+                    Option('Force delete', id=OPTION_FORCE),
+                ]
+            )
         if self.allow_evict:
             options.append(Option('Evict', id=OPTION_EVICT))
         yield Vertical(
@@ -96,10 +102,13 @@ def request_delete(
     name: str,
     namespace: str,
     *,
+    allow_delete: bool = True,
     allow_evict: bool = False,
     on_success: Callable[[DeletedObject], None] | None = None,
 ) -> None:
     """Open the confirm modal, then DELETE or evict off the Textual event loop."""
+    if not allow_delete and not allow_evict:
+        return
 
     def _chosen(choice: DeleteChoice | None) -> None:
         if choice is None:
@@ -111,7 +120,13 @@ def request_delete(
         )
 
     screen.app.push_screen(
-        DeleteConfirmScreen(kind, name, namespace, allow_evict=allow_evict),
+        DeleteConfirmScreen(
+            kind,
+            name,
+            namespace,
+            allow_delete=allow_delete,
+            allow_evict=allow_evict,
+        ),
         callback=_chosen,
     )
 

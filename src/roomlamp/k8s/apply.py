@@ -11,6 +11,8 @@ from typing import Any, Protocol
 import yaml
 from kubernetes.client.exceptions import ApiException
 
+from roomlamp.k8s.errors import api_error_message
+
 # Headlamp retries PUT when POST cannot create because the object already exists
 # (409) or create is forbidden but update is allowed (403).
 _RETRY_PUT_STATUSES = frozenset({403, 409})
@@ -143,27 +145,8 @@ def apply_object(
 
 
 def apply_error_message(exc: BaseException) -> str:
-    """User-facing apply error without kubeconfig or other secrets."""
-    summary = getattr(exc, 'summary', None)
-    if callable(summary):
-        try:
-            text = summary()
-        except Exception:
-            text = None
-        if text:
-            return str(text)
-    body = getattr(exc, 'body', None)
-    if isinstance(body, bytes):
-        body = body.decode('utf-8', errors='replace')
-    if isinstance(body, str) and body:
-        try:
-            data = json.loads(body)
-        except json.JSONDecodeError:
-            return body[:500]
-        if isinstance(data, dict) and data.get('message'):
-            return str(data['message'])
-        return body[:500]
-    return str(exc)
+    """User-facing HTTP error without response headers or kubeconfig secrets."""
+    return api_error_message(exc)
 
 
 def _create(

@@ -1,6 +1,6 @@
 # User manual
 
-Roomlamp is a terminal UI for Kubernetes. This page describes the **current workload lists**: Pods plus Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, and CronJob. You can switch namespaces and workload types. From a detail view you can edit YAML and apply it, open Pod logs, exec into a Pod, or delete the object.
+Roomlamp is a terminal UI for Kubernetes. This page describes the **current workload lists**: Pods plus Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, and CronJob. You can switch namespaces and workload types. From a detail view you can edit YAML and apply it, open Pod logs, exec into a Pod, or delete the object. Keys for actions the current kubeconfig user cannot perform are hidden.
 
 ## Prerequisites
 
@@ -83,7 +83,7 @@ The TUI does not display tokens, client keys, or certificate data.
 
 ## What you see
 
-List columns follow Headlamp and `kubectl get` for that kind. Click a column header to sort ascending; click the same header again to sort descending. A different header starts over at ascending. The header subtitle is `context / namespace` (workload lists also show the kind). The list updates from the Kubernetes Watch API when the connection stays up.
+List columns follow Headlamp and `kubectl get` for that kind. Click a column header to sort ascending; click the same header again to sort descending. A different header starts over at ascending. The header subtitle is `context / namespace` (workload lists also show the kind). The list updates from the Kubernetes Watch API when the connection stays up. API errors show the HTTP Reason first, then the response body (JSON Status objects as YAML).
 
 | Kind | Columns |
 | --- | --- |
@@ -95,12 +95,12 @@ List columns follow Headlamp and `kubectl get` for that kind. Click a column hea
 | Jobs | Namespace, Name, Completions, Conditions, Duration, Age |
 | CronJobs | Namespace, Name, Schedule, Suspend, Active, Last Schedule, Age |
 
-Detail views summarize metadata, kind-specific status fields, labels, and container image lines from the pod template. From a detail screen, `y` opens the live object as YAML (`managedFields` hidden) in an editor. `ctrl+s` applies (POST, then PUT if the object already exists, matching Headlamp); `f8` dry-runs; `ctrl+r` reloads from the API. From a Pod, `l` opens logs for the default container (a running main container if there is one, matching Headlamp). The log view tails 100 lines with timestamps and follows the stream while the screen is open. `e` opens an interactive exec session in that same default container. Roomlamp tries `bash`, then `/bin/bash`, then `sh`, then `/bin/sh` (Headlamp's linux list; windows pods get `powershell.exe` / `cmd.exe`). `f2` switches container; `ctrl+]` detaches. `escape` and `q` are sent to the shell, not used to leave the screen. `d` on a list or detail screen asks for confirmation, then deletes the object (Jobs use Background deletion; Force delete sets a zero grace period). On Pods, Evict is also offered (`pods/eviction`).
+Detail views summarize metadata, kind-specific status fields, labels, and container image lines from the pod template. From a detail screen, `y` opens the live object as YAML (`managedFields` hidden). If you can `update` the object, that YAML is an editor: `ctrl+s` applies (POST, then PUT if the object already exists, matching Headlamp); `f8` dry-runs; `ctrl+r` reloads from the API. Without `update`, the YAML stays read-only. From a Pod, `l` opens logs for the default container (a running main container if there is one, matching Headlamp) when you can `get` the `log` subresource. The log view tails 100 lines with timestamps and follows the stream while the screen is open. `e` opens an interactive exec session in that same default container when you can `create` on `exec`. Roomlamp tries `bash`, then `/bin/bash`, then `sh`, then `/bin/sh` (Headlamp's linux list; windows pods get `powershell.exe` / `cmd.exe`). `f2` switches container; `ctrl+]` detaches. `escape` and `q` are sent to the shell, not used to leave the screen. `d` on a list or detail screen asks for confirmation, then deletes the object (Jobs use Background deletion; Force delete sets a zero grace period) when you have `delete`. On Pods, Evict is also offered (`pods/eviction`, verb `create`) when that subresource is allowed.
 
 ## Current limitations
 
 - No JobSet or LeaderWorkerSet lists
-- No attach or RBAC gating of actions
+- No attach or debug / ephemeral containers
 - Exec is a TTY text log (ANSI stripped), not a full terminal emulator; tools such as vim or top may not render correctly
 - No aggregated logs from a Deployment or other workload detail
 - No plugin system

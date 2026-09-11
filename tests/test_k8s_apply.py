@@ -155,5 +155,7 @@ def test_apply_yaml_uses_getter_per_document() -> None:
 def test_apply_error_message_prefers_status_message() -> None:
     exc = ApiException(status=409, reason='Conflict')
     exc.body = '{"message":"configmaps \\"web\\" already exists"}'
-    assert 'already exists' in apply_error_message(exc)
+    text = apply_error_message(exc)
+    assert text.startswith('Reason: Conflict\n')
+    assert 'already exists' in text
     assert 'dummy-token' not in apply_error_message(ValueError('bad yaml'))

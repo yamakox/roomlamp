@@ -62,6 +62,7 @@ Useful Headlamp files when adding features:
 - YAML edit / apply: `frontend/src/components/common/Resource/EditorDialog.tsx`, `frontend/src/lib/k8s/api/v1/apply.ts`
 - Pod exec: `frontend/src/lib/k8s/pod.ts`, `frontend/src/components/common/Terminal.tsx`, `frontend/src/components/pod/Details.tsx`
 - Delete / evict: `frontend/src/components/common/Resource/DeleteButton.tsx`, `frontend/src/lib/k8s/KubeObject.ts`, `frontend/src/lib/k8s/pod.ts`
+- RBAC gating: `frontend/src/components/common/Resource/AuthVisible.tsx`, `frontend/src/lib/k8s/KubeObject.ts` (`getAuthorization`)
 - kubeconfig handling: `backend/pkg/kubeconfig/` (replace with the official Python client)
 
 ## Commands
@@ -151,11 +152,11 @@ tests/test_workloads.py
 
 **Not in this phase:** JobSet, LeaderWorkerSet, logs, exec, YAML edit, apply/delete, in-TUI context switch.
 
-### 4. Operator actions — in progress
+### 4. Operator actions — done
 
 **Goal:** logs and YAML view first; then exec / apply / delete. Hide or disable actions the current kubeconfig user cannot perform (RBAC).
 
-**Shipped so far:**
+**What shipped:**
 
 - Read-only YAML dump from Pod and workload detail (`y`), with `managedFields` hidden (Headlamp's default)
 - Pod logs from Pod detail (`l`). Last 100 lines with timestamps; follows the stream when Watch is enabled. `c` picks a container (main, init, then ephemeral, same order as Headlamp)
@@ -170,11 +171,13 @@ tests/test_workloads.py
 - Delete from Pod and workload detail (`d`) and from the selected list row. Confirm, then DELETE via `DynamicClient`
 - Jobs use `propagationPolicy=Background` (Headlamp `KubeObject.delete`). Force delete sets `gracePeriodSeconds=0`
 - Pods also offer Evict (`POST pods/eviction`, Headlamp `pod.evict`). After a successful delete from a detail screen, Roomlamp returns to the list
+- RBAC gating via `SelfSubjectAccessReview`, matching Headlamp AuthVisible. Unauthorized keys are hidden (fail closed if the review itself errors). YAML without `update` stays a read-only view
 
-**This increment (delete):**
+**This increment (RBAC):**
 
-- Confirm modal: Delete, Force delete, and Evict on Pods. `escape` cancels
-- Blocking delete I/O stays off the Textual event loop (`asyncio.to_thread`)
+- Delete uses verb `delete`; Pod evict uses verb `create` + subresource `eviction`
+- Logs use `get` + `log`; exec uses `create` + `exec`; YAML apply uses `update`
+- Blocking SSAR I/O stays off the Textual event loop (`asyncio.to_thread`)
 
 **Keys:** `y` YAML, `ctrl+s` Apply, `f8` Dry Run, `ctrl+r` refresh YAML, `l` logs (Pods), `c` container on the log screen, `e` exec (Pods), `f2` container on the exec screen, `ctrl+]` detach exec, `d` delete (list or detail), `escape` back (not on the exec TTY).
 
@@ -184,8 +187,10 @@ tests/test_workloads.py
 src/roomlamp/k8s/dump.py
 src/roomlamp/k8s/logs.py
 src/roomlamp/k8s/apply.py
+src/roomlamp/k8s/errors.py
 src/roomlamp/k8s/exec.py
 src/roomlamp/k8s/delete.py
+src/roomlamp/k8s/auth.py
 src/roomlamp/ui/screens/yaml_view.py
 src/roomlamp/ui/screens/logs.py
 src/roomlamp/ui/screens/exec.py
@@ -194,14 +199,17 @@ src/roomlamp/ui/screens/delete.py
 tests/test_k8s_dump.py
 tests/test_k8s_logs.py
 tests/test_k8s_apply.py
+tests/test_k8s_errors.py
 tests/test_k8s_exec.py
 tests/test_k8s_delete.py
+tests/test_k8s_auth.py
 tests/test_yaml_view.py
 tests/test_exec.py
 tests/test_delete.py
+tests/test_auth.py
 ```
 
-**Not in this increment:** attach, debug / ephemeral containers, RBAC gating, JSON Patch (Headlamp EditButton), server-side apply, create-from-empty YAML, live conflict watch in the editor, JSON log prettify, workload-aggregated logs, previous-container logs, a full VT/xterm emulator, multi-select delete, Namespace type-to-confirm (Namespaces are not in the catalog yet).
+**Not in this phase:** attach, debug / ephemeral containers, JSON Patch (Headlamp EditButton), server-side apply, create-from-empty YAML, live conflict watch in the editor, JSON log prettify, workload-aggregated logs, previous-container logs, a full VT/xterm emulator, multi-select delete, Namespace type-to-confirm (Namespaces are not in the catalog yet).
 
 ### 5. Wider catalog — planned
 
@@ -214,5 +222,5 @@ tests/test_delete.py
 | 1. Launch skeleton | Done |
 | 2. First read path | Done |
 | 3. Common workloads | Done |
-| 4. Operator actions | In progress (logs + YAML view + apply + exec + delete) |
+| 4. Operator actions | Done |
 | 5. Wider catalog | Planned |

@@ -12,6 +12,7 @@ from textual.message import Message
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Log, Static
 
+from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.logs import DEFAULT_TAIL_LINES, close_log_stream, interrupt_log_stream
 from roomlamp.ui.screens.containers import ContainerScreen
 
@@ -109,7 +110,7 @@ class PodLogsScreen(Screen[None]):
         try:
             text = await asyncio.to_thread(self._read)
         except Exception as exc:
-            self._set_status(str(exc))
+            self._set_status(api_error_message(exc))
             return
         self._show_text(text)
         self._set_status('')

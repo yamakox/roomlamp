@@ -10,6 +10,8 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
+from roomlamp.k8s.auth import actions_for, has_access_checker, initial_actions
+from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.resources import PodDetail
 from roomlamp.k8s.workloads import POD_KIND
 from roomlamp.ui.screens.delete import request_delete
@@ -33,9 +35,32 @@ class PodDetailScreen(Screen[None]):
         self.detail = detail
         self.cluster = cluster
         self.enable_watch = enable_watch
+        self._auth = initial_actions(cluster, POD_KIND)
 
     def on_mount(self) -> None:
         self.sub_title = f'{self.detail.namespace}/{self.detail.name}'
+        if has_access_checker(self.cluster):
+            self.run_worker(self._load_auth, exclusive=True, group='auth')
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        hidden = {
+            'delete': not self._auth.can_remove,
+            'show_logs': not self._auth.logs,
+            'show_exec': not self._auth.exec,
+        }
+        if hidden.get(action):
+            return False
+        return True
+
+    async def _load_auth(self) -> None:
+        self._auth = await asyncio.to_thread(
+            actions_for,
+            self.cluster,
+            POD_KIND,
+            self.detail.namespace,
+            self.detail.name,
+        )
+        self.refresh_bindings()
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -50,7 +75,7 @@ class PodDetailScreen(Screen[None]):
                 self.detail.name,
             )
         except Exception as exc:
-            self.notify(str(exc), severity='error')
+            self.notify(api_error_message(exc), severity='error')
             return
         title = f'Pod {self.detail.namespace}/{self.detail.name}'
         namespace = self.detail.namespace
@@ -63,10 +88,13 @@ class PodDetailScreen(Screen[None]):
                 apply=lambda body, dry_run=False: self.cluster.apply_yaml(
                     body, dry_run=dry_run, default_namespace=namespace
                 ),
+                can_apply=self._auth.update,
             )
         )
 
     async def action_show_logs(self) -> None:
+        if not self._auth.logs:
+            return
         container = self.detail.default_container
         if not container and self.detail.container_names:
             container = self.detail.container_names[0]
@@ -82,6 +110,8 @@ class PodDetailScreen(Screen[None]):
         )
 
     async def action_show_exec(self) -> None:
+        if not self._auth.exec:
+            return
         container = self.detail.default_container
         if not container and self.detail.container_names:
             container = self.detail.container_names[0]
@@ -103,7 +133,8 @@ class PodDetailScreen(Screen[None]):
             POD_KIND,
             self.detail.name,
             self.detail.namespace,
-            allow_evict=True,
+            allow_delete=self._auth.delete,
+            allow_evict=self._auth.evict,
             on_success=lambda _deleted: self.app.pop_screen(),
         )
 

@@ -19,6 +19,7 @@ from textual.screen import Screen
 from textual.strip import Strip
 from textual.widgets import Footer, Header, Log, Static
 
+from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.exec import (
     CONTAINER_KEY,
     DETACH_KEY,
@@ -408,7 +409,7 @@ class PodExecScreen(Screen[None]):
                     command=command,
                 )
             except Exception as exc:
-                self._emit_status(str(exc))
+                self._emit_status(api_error_message(exc))
                 if index >= last:
                     self._emit_connect_failed()
                     return

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from kubernetes.client import ApiClient
+from kubernetes.client import ApiClient, AuthorizationV1Api
 from kubernetes.dynamic import DynamicClient
 
 from roomlamp.k8s.apply import AppliedObject, apply_yaml as apply_documents
+from roomlamp.k8s.auth import review_access
 from roomlamp.k8s.client import build_api_client
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.delete import (
@@ -28,6 +29,8 @@ class ClusterAccess(ApiPodReader, ApiPodWatcher, ApiWorkloadReader, ApiWorkloadW
         ApiWorkloadReader.__init__(self, api_client)
         ApiWorkloadWatcher.__init__(self, api_client)
         self._dynamic: DynamicClient | None = None
+        self._auth_api: AuthorizationV1Api | None = None
+        self._auth_cache: dict[tuple[str | None, ...], bool] = {}
 
     def apply_yaml(
         self,
@@ -66,6 +69,35 @@ class ClusterAccess(ApiPodReader, ApiPodWatcher, ApiWorkloadReader, ApiWorkloadW
 
     def evict_pod(self, namespace: str, name: str) -> DeletedObject:
         return evict_pod_object(self._core, namespace, name)
+
+    def check_access(
+        self,
+        verb: str,
+        kind: str,
+        *,
+        namespace: str | None = None,
+        name: str | None = None,
+        subresource: str | None = None,
+    ) -> bool:
+        key = (verb, kind, namespace, name, subresource)
+        cached = self._auth_cache.get(key)
+        if cached is not None:
+            return cached
+        allowed = review_access(
+            self._authorization(),
+            verb,
+            kind,
+            namespace=namespace,
+            name=name,
+            subresource=subresource,
+        )
+        self._auth_cache[key] = allowed
+        return allowed
+
+    def _authorization(self) -> AuthorizationV1Api:
+        if self._auth_api is None:
+            self._auth_api = AuthorizationV1Api(self._api_client)
+        return self._auth_api
 
     def _dynamic_client(self) -> DynamicClient:
         if self._dynamic is None:

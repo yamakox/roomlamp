@@ -8,6 +8,8 @@ from collections.abc import Callable, Iterator
 
 from kubernetes.client import CoreV1Api
 
+from roomlamp.k8s.errors import api_error_message
+
 DEFAULT_TAIL_LINES = 100
 LogLineCallback = Callable[[str], None]
 ErrorCallback = Callable[[str], None]
@@ -64,7 +66,7 @@ def watch_pod_logs(
         resp = core.read_namespaced_pod_log(name, namespace, **kwargs)
     except Exception as exc:
         if not stop.is_set():
-            on_error(str(exc))
+            on_error(api_error_message(exc))
         return
     if on_open is not None:
         on_open(resp)
@@ -78,7 +80,7 @@ def watch_pod_logs(
             on_line(line)
     except Exception as exc:
         if not stop.is_set():
-            on_error(str(exc))
+            on_error(api_error_message(exc))
     finally:
         close_log_stream(resp)
 

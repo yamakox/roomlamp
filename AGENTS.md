@@ -131,8 +131,10 @@ This project uses the src layout. Add new modules under the target layout below 
       - `dump.py` — read-only YAML for API objects
       - `logs.py` — Pod log snapshot and follow
       - `apply.py` — YAML/JSON apply (POST, then PUT on 409/403)
+      - `errors.py` — HTTP API error text (Reason + JSON as YAML)
       - `exec.py` — Pod exec TTY (`kubernetes.stream`)
       - `delete.py` — Pod/workload delete (`DynamicClient`) and Pod evict (`pods/eviction`)
+      - `auth.py` — SelfSubjectAccessReview (Headlamp AuthVisible)
   - `ui/` — TUI (Headlamp frontend equivalent)
     - `screens/` — home, Pod list/detail, workload list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
     - `widgets/` — reusable widgets (add when a second consumer needs one)

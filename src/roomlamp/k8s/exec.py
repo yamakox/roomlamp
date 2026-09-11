@@ -13,6 +13,8 @@ from kubernetes.client import CoreV1Api
 from kubernetes.stream import stream
 from kubernetes.stream.ws_client import ERROR_CHANNEL, RESIZE_CHANNEL
 
+from roomlamp.k8s.errors import api_error_message
+
 LINUX_SHELLS = ('bash', '/bin/bash', 'sh', '/bin/sh')
 WINDOWS_SHELLS = ('powershell.exe', 'cmd.exe')
 FALLBACK_SHELLS = LINUX_SHELLS + WINDOWS_SHELLS
@@ -158,7 +160,7 @@ def follow_pod_exec(
         return 'closed'
     except Exception as exc:
         if not stop.is_set():
-            on_error(str(exc))
+            on_error(api_error_message(exc))
         return 'closed'
     finally:
         session.close()

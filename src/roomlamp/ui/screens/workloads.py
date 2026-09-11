@@ -11,8 +11,10 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
+from roomlamp.k8s.auth import ResourceActions, actions_for, has_access_checker, initial_actions
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.delete import DeletedObject
+from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.resources import ALL_NAMESPACES
 from roomlamp.k8s.watch import apply_watch_event
 from roomlamp.k8s.workloads import KIND_LABELS, KIND_SPECS, POD_KIND, WorkloadDetail, WorkloadSummary
@@ -88,6 +90,8 @@ class WorkloadListScreen(Screen[None]):
         self.sort_ascending = True
         self._watch_stop: threading.Event | None = None
         self._watch_thread: threading.Thread | None = None
+        self._auth = initial_actions(cluster, kind)
+        self._auth_key: str | None = None
 
     def on_mount(self) -> None:
         self._set_subtitle()
@@ -121,6 +125,15 @@ class WorkloadListScreen(Screen[None]):
         key = str(event.row_key.value) if event.row_key is not None else ''
         if key:
             self.run_worker(self._open_detail(key), exclusive=True, group='workload-detail')
+
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        key = str(event.row_key.value) if event.row_key is not None else None
+        self._queue_auth(key)
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        if action == 'delete' and not self._auth.can_remove:
+            return False
+        return True
 
     def action_pick_namespace(self) -> None:
         self.app.push_screen(
@@ -188,6 +201,7 @@ class WorkloadListScreen(Screen[None]):
             self.kind,
             name,
             namespace,
+            allow_delete=self._auth.delete,
             on_success=self._on_deleted,
         )
 
@@ -202,7 +216,7 @@ class WorkloadListScreen(Screen[None]):
             self._apply_list(namespaces, items)
             self._set_status('')
         except Exception as exc:
-            self._set_status(str(exc))
+            self._set_status(api_error_message(exc))
 
     async def _load_initial(self) -> None:
         try:
@@ -210,7 +224,7 @@ class WorkloadListScreen(Screen[None]):
             self._apply_list(namespaces, items)
             self._set_status('')
         except Exception as exc:
-            self._set_status(str(exc))
+            self._set_status(api_error_message(exc))
         if self.enable_watch:
             self._start_watch()
 
@@ -227,6 +241,8 @@ class WorkloadListScreen(Screen[None]):
         self._items = {item.key: item for item in items}
         self._render_table()
         self._set_subtitle()
+        key = selected_row_key(self.query_one('#workloads', DataTable))
+        self._queue_auth(key)
 
     def _apply_event(self, event_type: str, item: WorkloadSummary) -> None:
         self._items = apply_watch_event(self._items, event_type, item)
@@ -246,7 +262,7 @@ class WorkloadListScreen(Screen[None]):
         try:
             detail = await asyncio.to_thread(self.cluster.get_workload, self.kind, namespace, name)
         except Exception as exc:
-            self._set_status(str(exc))
+            self._set_status(api_error_message(exc))
             return
         await self.app.push_screen(WorkloadDetailScreen(detail, self.cluster))
 
@@ -276,6 +292,28 @@ class WorkloadListScreen(Screen[None]):
         self._watch_stop = None
         self._watch_thread = None
 
+    def _queue_auth(self, key: str | None) -> None:
+        if key == self._auth_key:
+            return
+        self._auth_key = key
+        if not key:
+            self._auth = ResourceActions.none()
+            self.refresh_bindings()
+            return
+        if not has_access_checker(self.cluster):
+            self._auth = initial_actions(self.cluster, self.kind)
+            self.refresh_bindings()
+            return
+        self.run_worker(self._load_row_auth(key), exclusive=True, group='auth')
+
+    async def _load_row_auth(self, key: str) -> None:
+        namespace, name = key.split('/', 1)
+        auth = await asyncio.to_thread(actions_for, self.cluster, self.kind, namespace, name)
+        if self._auth_key != key:
+            return
+        self._auth = auth
+        self.refresh_bindings()
+
     def _set_status(self, message: str) -> None:
         self.query_one('#workloads-status', Static).update(message)
 
@@ -297,9 +335,27 @@ class WorkloadDetailScreen(Screen[None]):
         super().__init__()
         self.detail = detail
         self.cluster = cluster
+        self._auth = initial_actions(cluster, detail.kind)
 
     def on_mount(self) -> None:
         self.sub_title = f'{self.detail.kind} {self.detail.namespace}/{self.detail.name}'
+        if has_access_checker(self.cluster):
+            self.run_worker(self._load_auth, exclusive=True, group='auth')
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        if action == 'delete' and not self._auth.can_remove:
+            return False
+        return True
+
+    async def _load_auth(self) -> None:
+        self._auth = await asyncio.to_thread(
+            actions_for,
+            self.cluster,
+            self.detail.kind,
+            self.detail.namespace,
+            self.detail.name,
+        )
+        self.refresh_bindings()
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -318,7 +374,7 @@ class WorkloadDetailScreen(Screen[None]):
                 self.detail.name,
             )
         except Exception as exc:
-            self.notify(str(exc), severity='error')
+            self.notify(api_error_message(exc), severity='error')
             return
         title = f'{self.detail.kind} {self.detail.namespace}/{self.detail.name}'
         kind = self.detail.kind
@@ -332,6 +388,7 @@ class WorkloadDetailScreen(Screen[None]):
                 apply=lambda body, dry_run=False: self.cluster.apply_yaml(
                     body, dry_run=dry_run, default_namespace=namespace
                 ),
+                can_apply=self._auth.update,
             )
         )
 
@@ -342,6 +399,7 @@ class WorkloadDetailScreen(Screen[None]):
             self.detail.kind,
             self.detail.name,
             self.detail.namespace,
+            allow_delete=self._auth.delete,
             on_success=lambda _deleted: self.app.pop_screen(),
         )
 
