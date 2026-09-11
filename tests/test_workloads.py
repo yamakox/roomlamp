@@ -10,6 +10,7 @@ from roomlamp.k8s.workloads import DEPLOYMENT, REPLICASET, WorkloadDetail, Workl
 from roomlamp.ui.screens.kinds import WorkloadKindScreen
 from roomlamp.ui.screens.pods import PodListScreen
 from roomlamp.ui.screens.workloads import WorkloadDetailScreen, WorkloadListScreen, sort_workloads
+from roomlamp.ui.screens.yaml_view import YamlViewScreen
 
 CREATED = datetime(2026, 1, 2, tzinfo=timezone.utc)
 
@@ -104,6 +105,15 @@ class FakeCluster:
             fields=(('Ready', '2/3'), ('Selector', 'app=web')),
             containers=(f'{name}: image=nginx:1',),
         )
+
+    def get_workload_yaml(
+        self,
+        kind: str,
+        namespace: str,
+        name: str,
+        hide_managed_fields: bool = True,
+    ) -> str:
+        return f'apiVersion: apps/v1\nkind: {kind}\nmetadata:\n  name: {name}\n  namespace: {namespace}\n'
 
 
 def _info() -> ClusterInfo:
@@ -230,3 +240,30 @@ def test_sort_workloads_by_column() -> None:
     assert by_name == ['api', 'dns', 'web']
     by_ready = [item.cells[2] for item in sort_workloads(items, 2, True)]
     assert by_ready == ['0/1', '1/1', '2/3']
+
+
+def test_workload_yaml_opens_from_detail() -> None:
+    app = RoomlampApp(_info(), cluster=FakeCluster(), enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            screen = app.screen
+            assert isinstance(screen, PodListScreen)
+            screen._on_kind_chosen(DEPLOYMENT)
+            await pilot.pause()
+            current = app.screen
+            assert isinstance(current, WorkloadListScreen)
+            await current._open_detail('default/web')
+            await pilot.pause()
+            detail = app.screen
+            assert isinstance(detail, WorkloadDetailScreen)
+            await detail.action_show_yaml()
+            await pilot.pause()
+            assert isinstance(app.screen, YamlViewScreen)
+            yaml_view = app.screen.query_one('#yaml-view', Static)
+            text = str(yaml_view.content)
+            assert 'kind: Deployment' in text
+            assert 'name: web' in text
+
+    asyncio.run(_run())

@@ -212,7 +212,7 @@ class PodListScreen(Screen[None]):
         except Exception as exc:
             self._set_status(str(exc))
             return
-        await self.app.push_screen(PodDetailScreen(detail))
+        await self.app.push_screen(PodDetailScreen(detail, self.cluster, self.enable_watch))
 
     def _start_watch(self) -> None:
         if not hasattr(self.cluster, 'watch_pods'):

@@ -4,6 +4,7 @@ from kubernetes.client.models import (
     V1Container,
     V1ContainerState,
     V1ContainerStateRunning,
+    V1ContainerStateWaiting,
     V1ContainerStatus,
     V1ObjectMeta,
     V1Pod,
@@ -11,7 +12,7 @@ from kubernetes.client.models import (
     V1PodStatus,
 )
 
-from roomlamp.k8s.resources import detail_pod, summarize_pod
+from roomlamp.k8s.resources import default_container_name, detail_pod, pod_container_names, summarize_pod
 from roomlamp.k8s.watch import apply_watch_event
 
 
@@ -34,6 +35,7 @@ def _pod(
         ),
         spec=V1PodSpec(
             containers=[V1Container(name='app', image='nginx:1')],
+            init_containers=[V1Container(name='init', image='busybox:1')],
             node_name=node,
         ),
         status=V1PodStatus(
@@ -71,6 +73,28 @@ def test_detail_pod_includes_labels_and_containers() -> None:
     assert detail.labels == (('app', 'web'),)
     assert any('app:' in line and 'nginx:1' in line for line in detail.containers)
     assert 'dummy-token' not in repr(detail)
+
+
+def test_pod_container_names_include_init_and_prefer_running() -> None:
+    pod = _pod()
+    assert pod_container_names(pod) == ('app', 'init')
+    assert default_container_name(pod) == 'app'
+
+    waiting = _pod()
+    waiting.status.container_statuses[0].state = V1ContainerState(
+        waiting=V1ContainerStateWaiting(reason='PodInitializing')
+    )
+    waiting.status.init_container_statuses = [
+        V1ContainerStatus(
+            name='init',
+            ready=False,
+            restart_count=0,
+            image='busybox:1',
+            image_id='sha256:init',
+            state=V1ContainerState(running=V1ContainerStateRunning()),
+        )
+    ]
+    assert default_container_name(waiting) == 'init'
 
 
 def test_apply_watch_event_add_modify_delete() -> None:

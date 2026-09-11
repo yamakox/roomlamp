@@ -1,6 +1,8 @@
 # User manual
 
-Roomlamp is a terminal UI for Kubernetes. This page describes the **current workload lists**: Pods plus Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, and CronJob. Detail views are read-only. You can switch namespaces and workload types.
+Roomlamp is a terminal UI for Kubernetes. This page describes the **current workload lists**: Pods plus Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, and CronJob. You can switch namespaces and workload types. Detail views are read-only except for opening YAML and Pod logs.
+
+## Prerequisites
 
 ## Prerequisites
 
@@ -66,9 +68,11 @@ The TUI does not display tokens, client keys, or certificate data.
 | `enter` | Open the selected item's detail |
 | `n` | Switch namespace (includes All namespaces) |
 | `w` | Switch workload type |
-| `c` | Show cluster / kubeconfig info |
+| `c` | Show cluster / kubeconfig info (on a list). Pick a container (on Pod logs) |
 | `p` | Open the Pod list |
-| `r` | Reload the current list |
+| `y` | View YAML (from a detail screen) |
+| `l` | View Pod logs (from Pod detail) |
+| `r` | Reload the current list, YAML, or logs |
 | `escape` | Back |
 | `q` | Quit |
 
@@ -86,12 +90,13 @@ List columns follow Headlamp and `kubectl get` for that kind. Click a column hea
 | Jobs | Namespace, Name, Completions, Conditions, Duration, Age |
 | CronJobs | Namespace, Name, Schedule, Suspend, Active, Last Schedule, Age |
 
-Detail views are read-only: metadata, kind-specific status fields, labels, and container image lines from the pod template.
+Detail views are read-only summaries: metadata, kind-specific status fields, labels, and container image lines from the pod template. From a detail screen, `y` opens the live object as YAML (`managedFields` hidden). From a Pod, `l` opens logs for the default container (a running main container if there is one, matching Headlamp). The log view tails 100 lines with timestamps and follows the stream while the screen is open.
 
 ## Current limitations
 
 - No JobSet or LeaderWorkerSet lists
-- No logs, exec, YAML edit, apply, or delete
+- No exec, YAML edit, apply, or delete
+- No aggregated logs from a Deployment or other workload detail
 - No plugin system
 - Cluster context is selected at launch (`--context` or `current-context`). Switching contexts inside the TUI is not implemented yet
 

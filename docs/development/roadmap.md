@@ -57,6 +57,8 @@ Useful Headlamp files when adding features:
 - Workload overview: `frontend/src/components/workload/`
 - Workload lists: `frontend/src/components/deployments/List.tsx`, `replicaset/List.tsx`, `statefulset/List.tsx`, `daemonset/List.tsx`, `job/List.tsx`, `cronjob/List.tsx`
 - Resource models: `frontend/src/lib/k8s/`
+- Pod logs: `frontend/src/lib/k8s/pod.ts`, `frontend/src/components/pod/Details.tsx`
+- YAML view: `frontend/src/components/common/Resource/ViewButton.tsx`
 - kubeconfig handling: `backend/pkg/kubeconfig/` (replace with the official Python client)
 
 ## Commands
@@ -146,9 +148,30 @@ tests/test_workloads.py
 
 **Not in this phase:** JobSet, LeaderWorkerSet, logs, exec, YAML edit, apply/delete, in-TUI context switch.
 
-### 4. Operator actions — planned
+### 4. Operator actions — in progress
 
 **Goal:** logs and YAML view first; then exec / apply / delete. Hide or disable actions the current kubeconfig user cannot perform (RBAC).
+
+**This increment (logs and YAML view):**
+
+- Read-only YAML from Pod and workload detail (`y`). Fetches the live object, dumps it with the official client, and hides `managedFields` (Headlamp's default)
+- Pod logs from Pod detail (`l`). Last 100 lines with timestamps; follows the stream when Watch is enabled. `c` picks a container (main, init, then ephemeral, same order as Headlamp)
+- Blocking log/YAML I/O stays off the Textual event loop (`asyncio.to_thread` / a background thread)
+
+**Keys:** `y` YAML, `l` logs (Pods), `c` container on the log screen, plus `r` refresh and `escape` back.
+
+**Layout:**
+
+```text
+src/roomlamp/k8s/dump.py
+src/roomlamp/k8s/logs.py
+src/roomlamp/ui/screens/yaml_view.py
+src/roomlamp/ui/screens/logs.py
+tests/test_k8s_dump.py
+tests/test_k8s_logs.py
+```
+
+**Not in this increment:** exec, YAML edit, apply/delete, RBAC gating, JSON log prettify, workload-aggregated logs, previous-container logs.
 
 ### 5. Wider catalog — planned
 
@@ -161,5 +184,5 @@ tests/test_workloads.py
 | 1. Launch skeleton | Done |
 | 2. First read path | Done |
 | 3. Common workloads | Done |
-| 4. Operator actions | Planned |
+| 4. Operator actions | In progress (logs + YAML view) |
 | 5. Wider catalog | Planned |

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
@@ -9,7 +11,13 @@ from typing import Protocol
 from kubernetes.client import ApiClient, CoreV1Api
 from kubernetes.client.models import V1Pod
 
+from roomlamp.k8s.dump import dump_resource
+from roomlamp.k8s.logs import DEFAULT_TAIL_LINES
+from roomlamp.k8s.logs import read_pod_logs as _read_pod_logs
+from roomlamp.k8s.logs import watch_pod_logs as _watch_pod_logs
+
 ALL_NAMESPACES = '*'
+POD_API_VERSION = 'v1'
 
 
 @dataclass(frozen=True)
@@ -39,6 +47,8 @@ class PodDetail:
     pod_ip: str | None
     labels: tuple[tuple[str, str], ...]
     containers: tuple[str, ...]
+    container_names: tuple[str, ...] = ()
+    default_container: str = ''
 
 
 class PodReader(Protocol):
@@ -47,6 +57,19 @@ class PodReader(Protocol):
     def list_pods(self, namespace: str) -> list[PodSummary]: ...
 
     def get_pod(self, namespace: str, name: str) -> PodDetail: ...
+
+    def get_pod_yaml(self, namespace: str, name: str, hide_managed_fields: bool = True) -> str: ...
+
+    def read_pod_logs(
+        self,
+        namespace: str,
+        name: str,
+        *,
+        container: str | None = None,
+        tail_lines: int = DEFAULT_TAIL_LINES,
+        timestamps: bool = True,
+        previous: bool = False,
+    ) -> str: ...
 
 
 class ApiPodReader:
@@ -70,6 +93,63 @@ class ApiPodReader:
 
     def get_pod(self, namespace: str, name: str) -> PodDetail:
         return detail_pod(self._core.read_namespaced_pod(name, namespace))
+
+    def get_pod_yaml(self, namespace: str, name: str, hide_managed_fields: bool = True) -> str:
+        pod = self._core.read_namespaced_pod(name, namespace)
+        return dump_resource(
+            pod,
+            kind='Pod',
+            api_version=POD_API_VERSION,
+            hide_managed_fields=hide_managed_fields,
+        )
+
+    def read_pod_logs(
+        self,
+        namespace: str,
+        name: str,
+        *,
+        container: str | None = None,
+        tail_lines: int = DEFAULT_TAIL_LINES,
+        timestamps: bool = True,
+        previous: bool = False,
+    ) -> str:
+        return _read_pod_logs(
+            self._core,
+            namespace,
+            name,
+            container=container,
+            tail_lines=tail_lines,
+            timestamps=timestamps,
+            previous=previous,
+        )
+
+    def watch_pod_logs(
+        self,
+        namespace: str,
+        name: str,
+        stop: threading.Event,
+        on_line: Callable[[str], None],
+        on_error: Callable[[str], None],
+        *,
+        container: str | None = None,
+        tail_lines: int = DEFAULT_TAIL_LINES,
+        timestamps: bool = True,
+        previous: bool = False,
+        on_open: Callable[[object], None] | None = None,
+    ) -> None:
+        _watch_pod_logs(
+            self._core,
+            namespace,
+            name,
+            stop,
+            on_line,
+            on_error,
+            container=container,
+            tail_lines=tail_lines,
+            timestamps=timestamps,
+            previous=previous,
+            on_open=on_open,
+        )
 
 
 def summarize_pod(pod: V1Pod) -> PodSummary:
@@ -98,6 +178,7 @@ def detail_pod(pod: V1Pod) -> PodDetail:
     if meta and meta.creation_timestamp:
         created = _format_time(meta.creation_timestamp)
     containers = _container_lines(pod)
+    names = pod_container_names(pod)
     return PodDetail(
         name=summary.name,
         namespace=summary.namespace,
@@ -110,7 +191,48 @@ def detail_pod(pod: V1Pod) -> PodDetail:
         pod_ip=status.pod_ip if status else None,
         labels=labels,
         containers=containers,
+        container_names=names,
+        default_container=default_container_name(pod),
     )
+
+
+def pod_container_names(pod: V1Pod) -> tuple[str, ...]:
+    """Main, init, then ephemeral containers — same order as Headlamp."""
+    spec = pod.spec
+    if spec is None:
+        return ()
+    names: list[str] = []
+    for group in (spec.containers, spec.init_containers, spec.ephemeral_containers):
+        if not group:
+            continue
+        names.extend(item.name for item in group if getattr(item, 'name', None))
+    return tuple(names)
+
+
+def default_container_name(pod: V1Pod) -> str:
+    """Prefer a running main container, then a running init, then the first spec name."""
+    status = pod.status
+    if status is not None:
+        running = _first_running_name(status.container_statuses)
+        if running:
+            return running
+        running = _first_running_name(status.init_container_statuses)
+        if running:
+            return running
+    names = pod_container_names(pod)
+    return names[0] if names else ''
+
+
+def _first_running_name(statuses: object | None) -> str:
+    if not statuses:
+        return ''
+    for item in statuses:
+        state = getattr(item, 'state', None)
+        if state is not None and getattr(state, 'running', None) is not None:
+            name = getattr(item, 'name', None)
+            if name:
+                return str(name)
+    return ''
 
 
 def _container_counts(pod: V1Pod) -> tuple[int, int, int]:

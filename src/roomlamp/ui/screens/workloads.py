@@ -17,6 +17,7 @@ from roomlamp.k8s.watch import apply_watch_event
 from roomlamp.k8s.workloads import KIND_LABELS, KIND_SPECS, POD_KIND, WorkloadDetail, WorkloadSummary
 from roomlamp.ui.screens.kinds import WorkloadKindScreen
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
+from roomlamp.ui.screens.yaml_view import YamlViewScreen
 
 
 def sort_workloads(items: list[WorkloadSummary], column: int, ascending: bool) -> list[WorkloadSummary]:
@@ -225,7 +226,7 @@ class WorkloadListScreen(Screen[None]):
         except Exception as exc:
             self._set_status(str(exc))
             return
-        await self.app.push_screen(WorkloadDetailScreen(detail))
+        await self.app.push_screen(WorkloadDetailScreen(detail, self.cluster))
 
     def _start_watch(self) -> None:
         if not hasattr(self.cluster, 'watch_workloads'):
@@ -263,11 +264,16 @@ class WorkloadListScreen(Screen[None]):
 
 
 class WorkloadDetailScreen(Screen[None]):
-    BINDINGS = [('escape', 'app.pop_screen', 'Back'), ('backspace', 'app.pop_screen', 'Back')]
+    BINDINGS = [
+        ('y', 'show_yaml', 'YAML'),
+        ('escape', 'app.pop_screen', 'Back'),
+        ('backspace', 'app.pop_screen', 'Back'),
+    ]
 
-    def __init__(self, detail: WorkloadDetail) -> None:
+    def __init__(self, detail: WorkloadDetail, cluster: Any) -> None:
         super().__init__()
         self.detail = detail
+        self.cluster = cluster
 
     def on_mount(self) -> None:
         self.sub_title = f'{self.detail.kind} {self.detail.namespace}/{self.detail.name}'
@@ -279,6 +285,30 @@ class WorkloadDetailScreen(Screen[None]):
             id='workload-detail-wrap',
         )
         yield Footer()
+
+    async def action_show_yaml(self) -> None:
+        try:
+            text = await asyncio.to_thread(
+                self.cluster.get_workload_yaml,
+                self.detail.kind,
+                self.detail.namespace,
+                self.detail.name,
+            )
+        except Exception as exc:
+            self.notify(str(exc), severity='error')
+            return
+        title = f'{self.detail.kind} {self.detail.namespace}/{self.detail.name}'
+        await self.app.push_screen(
+            YamlViewScreen(
+                title,
+                text,
+                reload=lambda: self.cluster.get_workload_yaml(
+                    self.detail.kind,
+                    self.detail.namespace,
+                    self.detail.name,
+                ),
+            )
+        )
 
 
 def _detail_text(detail: WorkloadDetail) -> str:
