@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from textual.widgets import DataTable, Static
+from textual.widgets import DataTable, Static, TextArea
 
 from roomlamp.app import RoomlampApp
 from roomlamp.k8s.context import ClusterInfo
@@ -261,8 +261,8 @@ def test_workload_yaml_opens_from_detail() -> None:
             await detail.action_show_yaml()
             await pilot.pause()
             assert isinstance(app.screen, YamlViewScreen)
-            yaml_view = app.screen.query_one('#yaml-view', Static)
-            text = str(yaml_view.content)
+            yaml_view = app.screen.query_one('#yaml-view', TextArea)
+            text = yaml_view.text
             assert 'kind: Deployment' in text
             assert 'name: web' in text
 

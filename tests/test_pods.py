@@ -10,7 +10,7 @@ from roomlamp.ui.screens.namespaces import NamespaceScreen
 from roomlamp.ui.screens.pod_detail import PodDetailScreen
 from roomlamp.ui.screens.pods import PodListScreen, sort_pods
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
-from textual.widgets import DataTable, Log, Static
+from textual.widgets import DataTable, Log, Static, TextArea
 
 
 class FakeCluster:
@@ -181,9 +181,9 @@ def test_pod_yaml_and_logs_open_from_detail() -> None:
             await detail.action_show_yaml()
             await pilot.pause()
             assert isinstance(app.screen, YamlViewScreen)
-            yaml_view = app.screen.query_one('#yaml-view', Static)
-            assert 'kind: Pod' in str(yaml_view.content)
-            assert 'name: web' in str(yaml_view.content)
+            yaml_view = app.screen.query_one('#yaml-view', TextArea)
+            assert 'kind: Pod' in yaml_view.text
+            assert 'name: web' in yaml_view.text
             await pilot.press('escape')
             await pilot.pause()
             await detail.action_show_logs()

@@ -48,11 +48,16 @@ class PodDetailScreen(Screen[None]):
             self.notify(str(exc), severity='error')
             return
         title = f'Pod {self.detail.namespace}/{self.detail.name}'
+        namespace = self.detail.namespace
+        name = self.detail.name
         await self.app.push_screen(
             YamlViewScreen(
                 title,
                 text,
-                reload=lambda: self.cluster.get_pod_yaml(self.detail.namespace, self.detail.name),
+                reload=lambda: self.cluster.get_pod_yaml(namespace, name),
+                apply=lambda body, dry_run=False: self.cluster.apply_yaml(
+                    body, dry_run=dry_run, default_namespace=namespace
+                ),
             )
         )
 

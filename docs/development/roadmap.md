@@ -59,6 +59,7 @@ Useful Headlamp files when adding features:
 - Resource models: `frontend/src/lib/k8s/`
 - Pod logs: `frontend/src/lib/k8s/pod.ts`, `frontend/src/components/pod/Details.tsx`
 - YAML view: `frontend/src/components/common/Resource/ViewButton.tsx`
+- YAML edit / apply: `frontend/src/components/common/Resource/EditorDialog.tsx`, `frontend/src/lib/k8s/api/v1/apply.ts`
 - kubeconfig handling: `backend/pkg/kubeconfig/` (replace with the official Python client)
 
 ## Commands
@@ -152,26 +153,34 @@ tests/test_workloads.py
 
 **Goal:** logs and YAML view first; then exec / apply / delete. Hide or disable actions the current kubeconfig user cannot perform (RBAC).
 
-**This increment (logs and YAML view):**
+**Shipped so far:**
 
-- Read-only YAML from Pod and workload detail (`y`). Fetches the live object, dumps it with the official client, and hides `managedFields` (Headlamp's default)
+- Read-only YAML dump from Pod and workload detail (`y`), with `managedFields` hidden (Headlamp's default)
 - Pod logs from Pod detail (`l`). Last 100 lines with timestamps; follows the stream when Watch is enabled. `c` picks a container (main, init, then ephemeral, same order as Headlamp)
-- Blocking log/YAML I/O stays off the Textual event loop (`asyncio.to_thread` / a background thread)
 
-**Keys:** `y` YAML, `l` logs (Pods), `c` container on the log screen, plus `r` refresh and `escape` back.
+**This increment (YAML edit and apply):**
+
+- YAML from Pod and workload detail (`y`) is an editor. `ctrl+s` applies; `f8` dry-runs; `ctrl+r` reloads from the API; unchanged buffers are not sent
+- Apply matches Headlamp `apply.ts`: POST, then PUT on 409 Conflict or 403 Forbidden. `resourceVersion` is dropped for create and restored for replace. Namespaced objects without a namespace use the object's namespace (or `default`)
+- YAML and JSON (including multi-document YAML) go through the official client's `DynamicClient`. Blocking apply I/O stays off the Textual event loop (`asyncio.to_thread`)
+
+**Keys:** `y` YAML, `ctrl+s` Apply, `f8` Dry Run, `ctrl+r` refresh YAML, `l` logs (Pods), `c` container on the log screen, `escape` back.
 
 **Layout:**
 
 ```text
 src/roomlamp/k8s/dump.py
 src/roomlamp/k8s/logs.py
+src/roomlamp/k8s/apply.py
 src/roomlamp/ui/screens/yaml_view.py
 src/roomlamp/ui/screens/logs.py
 tests/test_k8s_dump.py
 tests/test_k8s_logs.py
+tests/test_k8s_apply.py
+tests/test_yaml_view.py
 ```
 
-**Not in this increment:** exec, YAML edit, apply/delete, RBAC gating, JSON log prettify, workload-aggregated logs, previous-container logs.
+**Not in this increment:** exec, delete, RBAC gating, JSON Patch (Headlamp EditButton), server-side apply, create-from-empty YAML, live conflict watch in the editor, JSON log prettify, workload-aggregated logs, previous-container logs.
 
 ### 5. Wider catalog — planned
 
@@ -184,5 +193,5 @@ tests/test_k8s_logs.py
 | 1. Launch skeleton | Done |
 | 2. First read path | Done |
 | 3. Common workloads | Done |
-| 4. Operator actions | In progress (logs + YAML view) |
+| 4. Operator actions | In progress (logs + YAML view + apply) |
 | 5. Wider catalog | Planned |

@@ -298,14 +298,16 @@ class WorkloadDetailScreen(Screen[None]):
             self.notify(str(exc), severity='error')
             return
         title = f'{self.detail.kind} {self.detail.namespace}/{self.detail.name}'
+        kind = self.detail.kind
+        namespace = self.detail.namespace
+        name = self.detail.name
         await self.app.push_screen(
             YamlViewScreen(
                 title,
                 text,
-                reload=lambda: self.cluster.get_workload_yaml(
-                    self.detail.kind,
-                    self.detail.namespace,
-                    self.detail.name,
+                reload=lambda: self.cluster.get_workload_yaml(kind, namespace, name),
+                apply=lambda body, dry_run=False: self.cluster.apply_yaml(
+                    body, dry_run=dry_run, default_namespace=namespace
                 ),
             )
         )

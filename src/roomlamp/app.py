@@ -16,7 +16,11 @@ class RoomlampApp(App[None]):
 
     TITLE = 'Roomlamp'
     CSS = """
-    #home, #pods-wrap, #pod-detail-wrap, #workloads-wrap, #workload-detail-wrap, #yaml-wrap, #logs-wrap {
+    #home, #pods-wrap, #pod-detail-wrap, #workloads-wrap, #workload-detail-wrap, #logs-wrap {
+        padding: 1 2;
+    }
+
+    #yaml-view {
         padding: 1 2;
     }
 
