@@ -14,7 +14,9 @@ from textual.widgets import DataTable, Footer, Header, Static
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodSummary
 from roomlamp.k8s.watch import apply_watch_event
+from roomlamp.k8s.workloads import POD_KIND
 from roomlamp.ui.screens.home import HomeScreen
+from roomlamp.ui.screens.kinds import WorkloadKindScreen
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.pod_detail import PodDetailScreen
 
@@ -50,6 +52,7 @@ def sort_pods(pods: list[PodSummary], column: int, ascending: bool) -> list[PodS
 class PodListScreen(Screen[None]):
     BINDINGS = [
         ('n', 'pick_namespace', 'Namespace'),
+        ('w', 'pick_kind', 'Workloads'),
         ('c', 'show_cluster', 'Cluster'),
         ('r', 'refresh', 'Refresh'),
     ]
@@ -121,6 +124,24 @@ class PodListScreen(Screen[None]):
             self.run_worker(self._load_initial, exclusive=True, group='pods-load')
         else:
             self._load_sync()
+
+    def action_pick_kind(self) -> None:
+        self.app.push_screen(WorkloadKindScreen(POD_KIND), callback=self._on_kind_chosen)
+
+    def _on_kind_chosen(self, chosen: str | None) -> None:
+        if chosen is None or chosen == POD_KIND:
+            return
+        from roomlamp.ui.screens.workloads import show_kind_list
+
+        show_kind_list(
+            self.app,
+            self.info,
+            self.cluster,
+            chosen,
+            self.namespace,
+            self.enable_watch,
+            replace=False,
+        )
 
     def action_show_cluster(self) -> None:
         self.app.push_screen(HomeScreen(self.info))
