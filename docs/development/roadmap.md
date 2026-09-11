@@ -101,11 +101,22 @@ docs/development/roadmap.md
 
 **Not in this phase:** resource lists, Watch, logs, exec, YAML edit, RBAC gating, widgets package, `resources.py`, `watch.py`.
 
-### 2. First read path — planned
+### 2. First read path — done
 
-**Goal:** namespace switch plus one resource type (Pod is the likely first choice) with list and detail views. Prefer Watch over polling.
+**Goal:** namespace switch plus Pod list and detail views. Prefer Watch over polling.
 
-**Depends on:** phase 1. Introduce `k8s/resources.py` and `k8s/watch.py` when this starts. Run Kubernetes calls with `asyncio.to_thread` or `threading`.
+**What shipped:**
+
+- Official client with `persist_config=False` (`k8s/client.py`, `k8s/cluster.py`)
+- Namespace list and Pod list/get (`k8s/resources.py`)
+- Pod Watch in a background thread (`k8s/watch.py`); list/get use `asyncio.to_thread`
+- TUI: Pod table (Name / Ready / Status / Restarts / Node), detail screen, namespace picker including All namespaces
+- Default screen is the Pod list when kubeconfig loads; `c` opens the cluster summary from phase 1
+- Columns follow Headlamp `frontend/src/components/pod/List.tsx` and `kubectl get pods`
+
+**Keys:** `enter` detail, `n` namespace, `c` cluster, `p` pods, `r` refresh, `escape` back, `q` quit.
+
+**Not in this phase:** other workload types, logs, exec, YAML edit, apply/delete, in-TUI context switch.
 
 ### 3. Common workloads — planned
 
@@ -124,7 +135,7 @@ docs/development/roadmap.md
 | Phase | Status |
 | --- | --- |
 | 1. Launch skeleton | Done |
-| 2. First read path | Planned |
+| 2. First read path | Done |
 | 3. Common workloads | Planned |
 | 4. Operator actions | Planned |
 | 5. Wider catalog | Planned |

@@ -6,6 +6,7 @@ import click
 
 from roomlamp.app import RoomlampApp
 from roomlamp.config import load_env
+from roomlamp.k8s.cluster import open_cluster
 from roomlamp.k8s.context import load_cluster_info
 
 
@@ -24,4 +25,4 @@ def main(kubeconfig: str | None, context: str | None) -> None:
     """Start the Roomlamp terminal UI."""
     load_env()
     info = load_cluster_info(config_file=kubeconfig, context=context)
-    RoomlampApp(info).run()
+    RoomlampApp(info, cluster=open_cluster(info)).run()

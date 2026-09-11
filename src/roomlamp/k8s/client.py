@@ -1,9 +1,12 @@
-"""Resolve kubeconfig paths the same way kubectl does."""
+"""Resolve kubeconfig paths and build an official API client."""
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
+
+from kubernetes.client import ApiClient, Configuration
+from kubernetes.config.kube_config import load_kube_config
 
 DEFAULT_KUBECONFIG = Path.home() / '.kube' / 'config'
 
@@ -22,3 +25,15 @@ def resolve_kubeconfig(config_file: str | None = None) -> str:
     if env:
         return env
     return str(DEFAULT_KUBECONFIG)
+
+
+def build_api_client(config_file: str, context: str | None = None) -> ApiClient:
+    """Build a client from kubeconfig without rewriting the file."""
+    configuration = Configuration()
+    load_kube_config(
+        config_file=config_file,
+        context=context,
+        client_configuration=configuration,
+        persist_config=False,
+    )
+    return ApiClient(configuration)

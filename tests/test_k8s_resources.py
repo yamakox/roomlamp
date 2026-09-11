@@ -1,0 +1,87 @@
+from datetime import datetime, timezone
+
+from kubernetes.client.models import (
+    V1Container,
+    V1ContainerState,
+    V1ContainerStateRunning,
+    V1ContainerStatus,
+    V1ObjectMeta,
+    V1Pod,
+    V1PodSpec,
+    V1PodStatus,
+)
+
+from roomlamp.k8s.resources import detail_pod, summarize_pod
+from roomlamp.k8s.watch import apply_watch_event
+
+
+def _pod(
+    *,
+    name: str = 'web',
+    namespace: str = 'default',
+    phase: str = 'Running',
+    ready: bool = True,
+    restarts: int = 2,
+    node: str = 'node-a',
+) -> V1Pod:
+    return V1Pod(
+        metadata=V1ObjectMeta(
+            name=name,
+            namespace=namespace,
+            uid='uid-1',
+            creation_timestamp=datetime(2026, 1, 2, tzinfo=timezone.utc),
+            labels={'app': 'web'},
+        ),
+        spec=V1PodSpec(
+            containers=[V1Container(name='app', image='nginx:1')],
+            node_name=node,
+        ),
+        status=V1PodStatus(
+            phase=phase,
+            pod_ip='10.1.0.5',
+            container_statuses=[
+                V1ContainerStatus(
+                    name='app',
+                    ready=ready,
+                    restart_count=restarts,
+                    image='nginx:1',
+                    image_id='sha256:abc',
+                    state=V1ContainerState(running=V1ContainerStateRunning()),
+                )
+            ],
+        ),
+    )
+
+
+def test_summarize_pod_ready_and_restarts() -> None:
+    summary = summarize_pod(_pod())
+    assert summary.name == 'web'
+    assert summary.namespace == 'default'
+    assert summary.phase == 'Running'
+    assert summary.ready == '1/1'
+    assert summary.restarts == 2
+    assert summary.node == 'node-a'
+    assert summary.key == 'default/web'
+
+
+def test_detail_pod_includes_labels_and_containers() -> None:
+    detail = detail_pod(_pod())
+    assert detail.uid == 'uid-1'
+    assert detail.pod_ip == '10.1.0.5'
+    assert detail.labels == (('app', 'web'),)
+    assert any('app:' in line and 'nginx:1' in line for line in detail.containers)
+    assert 'dummy-token' not in repr(detail)
+
+
+def test_apply_watch_event_add_modify_delete() -> None:
+    first = summarize_pod(_pod())
+    pods = apply_watch_event({}, 'ADDED', first)
+    assert pods[first.key].phase == 'Running'
+
+    updated = summarize_pod(_pod(phase='Failed', restarts=3))
+    pods = apply_watch_event(pods, 'MODIFIED', updated)
+    assert pods[first.key].phase == 'Failed'
+    assert pods[first.key].restarts == 3
+
+    pods = apply_watch_event(pods, 'DELETED', updated)
+    assert first.key not in pods
