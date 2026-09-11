@@ -9,6 +9,7 @@ from typing import Protocol, TypeVar
 from kubernetes.client import ApiClient, CoreV1Api
 from kubernetes.watch import Watch
 
+from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodSummary, summarize_pod
 from roomlamp.k8s.workloads import ApiWorkloadReader, WorkloadSummary, summarize_workload
 
@@ -111,7 +112,7 @@ def watch_stream(
         except Exception as exc:
             if stop.is_set():
                 return
-            on_error(str(exc))
+            on_error(api_error_message(exc))
             return
 
 

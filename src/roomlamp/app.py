@@ -16,15 +16,19 @@ class RoomlampApp(App[None]):
 
     TITLE = 'Roomlamp'
     CSS = """
-    #home, #pods-wrap, #pod-detail-wrap, #workloads-wrap, #workload-detail-wrap {
+    #home, #pods-wrap, #pod-detail-wrap, #workloads-wrap, #workload-detail-wrap, #logs-wrap, #exec-wrap {
         padding: 1 2;
     }
 
-    #pods-status, #workloads-status {
+    #yaml-view {
+        padding: 1 2;
+    }
+
+    #pods-status, #workloads-status, #logs-status, #exec-status {
         margin-bottom: 1;
     }
 
-    #namespace-dialog, #kind-dialog {
+    #namespace-dialog, #kind-dialog, #container-dialog, #delete-dialog {
         width: 60;
         height: auto;
         padding: 1 2;

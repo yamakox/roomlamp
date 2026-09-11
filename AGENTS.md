@@ -121,15 +121,22 @@ This project uses the src layout. Add new modules under the target layout below 
   - `cli.py` — Click commands and launch options
   - `app.py` — Textual `App`
   - `config.py` — dotenv / runtime settings
-  - `k8s/` — cluster access (Headlamp backend equivalent)
-    - `client.py` — kubeconfig path and `ApiClient` (`persist_config=False`)
-    - `context.py` — current context / cluster
-    - `cluster.py` — live `ClusterAccess` (reader + watcher)
-    - `resources.py` — namespace and Pod list / get
-    - `workloads.py` — Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob
-    - `watch.py` — Pod and workload Watch streams
+    - `k8s/` — cluster access (Headlamp backend equivalent)
+      - `client.py` — kubeconfig path and `ApiClient` (`persist_config=False`)
+      - `context.py` — current context / cluster
+      - `cluster.py` — live `ClusterAccess` (reader + watcher)
+      - `resources.py` — namespace and Pod list / get / YAML / logs
+      - `workloads.py` — Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob
+      - `watch.py` — Pod and workload Watch streams
+      - `dump.py` — read-only YAML for API objects
+      - `logs.py` — Pod log snapshot and follow
+      - `apply.py` — YAML/JSON apply (POST, then PUT on 409/403)
+      - `errors.py` — HTTP API error text (Reason + JSON as YAML)
+      - `exec.py` — Pod exec TTY (`kubernetes.stream`)
+      - `delete.py` — Pod/workload delete (`DynamicClient`) and Pod evict (`pods/eviction`)
+      - `auth.py` — SelfSubjectAccessReview (Headlamp AuthVisible)
   - `ui/` — TUI (Headlamp frontend equivalent)
-    - `screens/` — home, Pod list/detail, workload list/detail, namespace picker, kind picker
+    - `screens/` — home, Pod list/detail, workload list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
     - `widgets/` — reusable widgets (add when a second consumer needs one)
     - `bindings.py` — shared key bindings (add when bindings are no longer screen-local)
 - **`tests/`** — pytest suite (outside `src/`)

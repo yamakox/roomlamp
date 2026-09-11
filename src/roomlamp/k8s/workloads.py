@@ -8,6 +8,7 @@ from typing import Protocol
 
 from kubernetes.client import ApiClient, AppsV1Api, BatchV1Api
 
+from roomlamp.k8s.dump import dump_resource
 from roomlamp.k8s.resources import ALL_NAMESPACES, _format_time
 
 POD_KIND = 'Pod'
@@ -127,6 +128,14 @@ class WorkloadReader(Protocol):
 
     def get_workload(self, kind: str, namespace: str, name: str) -> WorkloadDetail: ...
 
+    def get_workload_yaml(
+        self,
+        kind: str,
+        namespace: str,
+        name: str,
+        hide_managed_fields: bool = True,
+    ) -> str: ...
+
 
 class ApiWorkloadReader:
     """Workload reads through a live ``ApiClient``."""
@@ -144,6 +153,23 @@ class ApiWorkloadReader:
         api = self._api(spec)
         raw = getattr(api, spec.read_namespaced)(name, namespace)
         return detail_workload(kind, raw)
+
+    def get_workload_yaml(
+        self,
+        kind: str,
+        namespace: str,
+        name: str,
+        hide_managed_fields: bool = True,
+    ) -> str:
+        spec = _require_kind(kind)
+        api = self._api(spec)
+        raw = getattr(api, spec.read_namespaced)(name, namespace)
+        return dump_resource(
+            raw,
+            kind=kind,
+            api_version=f'{spec.group}/v1',
+            hide_managed_fields=hide_managed_fields,
+        )
 
     def list_call(self, kind: str, namespace: str) -> tuple[object, tuple[object, ...]]:
         spec = _require_kind(kind)

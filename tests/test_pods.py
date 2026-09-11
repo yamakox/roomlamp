@@ -1,12 +1,16 @@
 import asyncio
+import threading
+import time
 
 from roomlamp.app import RoomlampApp
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodDetail, PodSummary
+from roomlamp.ui.screens.logs import PodLogsScreen
 from roomlamp.ui.screens.namespaces import NamespaceScreen
 from roomlamp.ui.screens.pod_detail import PodDetailScreen
 from roomlamp.ui.screens.pods import PodListScreen, sort_pods
-from textual.widgets import DataTable, Static
+from roomlamp.ui.screens.yaml_view import YamlViewScreen
+from textual.widgets import DataTable, Log, Static, TextArea
 
 
 class FakeCluster:
@@ -37,7 +41,24 @@ class FakeCluster:
             pod_ip='10.1.0.5',
             labels=(('app', name),),
             containers=(f'{name}: running',),
+            container_names=('app',),
+            default_container='app',
         )
+
+    def get_pod_yaml(self, namespace: str, name: str, hide_managed_fields: bool = True) -> str:
+        return f'apiVersion: v1\nkind: Pod\nmetadata:\n  name: {name}\n  namespace: {namespace}\n'
+
+    def read_pod_logs(
+        self,
+        namespace: str,
+        name: str,
+        *,
+        container: str | None = None,
+        tail_lines: int = 100,
+        timestamps: bool = True,
+        previous: bool = False,
+    ) -> str:
+        return f'{name}: hello from {container or "app"}\n'
 
 
 def _info() -> ClusterInfo:
@@ -143,3 +164,130 @@ def test_header_click_sorts_then_reverses() -> None:
             assert screen.sort_ascending is True
 
     asyncio.run(_run())
+
+
+def test_pod_yaml_and_logs_open_from_detail() -> None:
+    app = RoomlampApp(_info(), cluster=FakeCluster(), enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            screen = app.screen
+            assert isinstance(screen, PodListScreen)
+            await screen._open_detail('default/web')
+            await pilot.pause()
+            detail = app.screen
+            assert isinstance(detail, PodDetailScreen)
+            await detail.action_show_yaml()
+            await pilot.pause()
+            assert isinstance(app.screen, YamlViewScreen)
+            yaml_view = app.screen.query_one('#yaml-view', TextArea)
+            assert 'kind: Pod' in yaml_view.text
+            assert 'name: web' in yaml_view.text
+            await pilot.press('escape')
+            await pilot.pause()
+            await detail.action_show_logs()
+            await pilot.pause()
+            assert isinstance(app.screen, PodLogsScreen)
+            log = app.screen.query_one('#pod-logs', Log)
+            assert any('hello from' in line for line in log.lines)
+
+    asyncio.run(_run())
+
+
+class _FakeSock:
+    def __init__(self, closed: threading.Event) -> None:
+        self._closed = closed
+
+    def shutdown(self, _how: int) -> None:
+        self._closed.set()
+
+
+class _BlockingLogStream:
+    """Stays open until the socket is shut down — models a follow=True HTTP body."""
+
+    def __init__(self) -> None:
+        self._chunks = [b'hello from stream\n']
+        self._index = 0
+        self._closed = threading.Event()
+        self.closed = False
+        self.close_calls = 0
+        self._connection = type('Conn', (), {})()
+        self._connection.sock = _FakeSock(self._closed)
+
+    def __iter__(self) -> '_BlockingLogStream':
+        return self
+
+    def __next__(self) -> bytes:
+        if self._index < len(self._chunks):
+            chunk = self._chunks[self._index]
+            self._index += 1
+            return chunk
+        self._closed.wait()
+        raise StopIteration
+
+    def close(self) -> None:
+        self.close_calls += 1
+        time.sleep(2)
+        self.closed = True
+        self._closed.set()
+
+    def release_conn(self) -> None:
+        self.close()
+
+
+class FollowCluster(FakeCluster):
+    def watch_pod_logs(
+        self,
+        namespace: str,
+        name: str,
+        stop: threading.Event,
+        on_line: object,
+        on_error: object,
+        *,
+        container: str | None = None,
+        tail_lines: int = 100,
+        timestamps: bool = True,
+        previous: bool = False,
+        on_open: object | None = None,
+    ) -> None:
+        from roomlamp.k8s.logs import close_log_stream, iter_log_lines
+
+        stream = _BlockingLogStream()
+        if callable(on_open):
+            on_open(stream)
+        if stop.is_set():
+            close_log_stream(stream)
+            return
+        try:
+            for line in iter_log_lines(stream):
+                if stop.is_set():
+                    break
+                if callable(on_line):
+                    on_line(line)
+        finally:
+            close_log_stream(stream)
+
+
+def test_leaving_followed_logs_returns_to_pod_list_quickly() -> None:
+    app = RoomlampApp(_info(), cluster=FollowCluster(), enable_watch=True)
+
+    async def _run() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            screen = app.screen
+            assert isinstance(screen, PodListScreen)
+            await screen._open_detail('default/web')
+            await pilot.pause()
+            detail = app.screen
+            assert isinstance(detail, PodDetailScreen)
+            await detail.action_show_logs()
+            await pilot.pause()
+            assert isinstance(app.screen, PodLogsScreen)
+            started = time.monotonic()
+            await pilot.press('escape')
+            await pilot.pause()
+            assert isinstance(app.screen, PodDetailScreen)
+            assert time.monotonic() - started < 1
+
+    asyncio.run(asyncio.wait_for(_run(), timeout=8))
