@@ -8,7 +8,7 @@ This document is the human-readable record of how that TUI is built. Agents and 
 
 Roomlamp reads the same kubeconfig file kubectl uses. It does **not** need `kubectl create token`.
 
-A typical kubeadm admin workstation is enough:
+**On the control plane**, kubeadm prints this after a successful `kubeadm init`:
 
 ```bash
 mkdir -p $HOME/.kube
@@ -16,7 +16,17 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
 
-That file already holds the API server URL and credentials (usually a client certificate). kubectl and Roomlamp both honor:
+**On the development PC**, kubectl must be installed first. Then pull `admin.conf` over SSH (replace `user@control-plane` with your SSH login):
+
+```bash
+install -d -m 700 ~/.kube
+umask 077
+ssh -t user@control-plane 'sudo cat /etc/kubernetes/admin.conf' > ~/.kube/config
+```
+
+`ssh -t` gives remote `sudo` a TTY so it can prompt for a password. `umask 077` creates `~/.kube/config` as mode `600`. Confirm the copy with `kubectl get nodes`.
+
+The resulting kubeconfig already holds the API server URL and credentials (usually a client certificate). kubectl and Roomlamp both honor:
 
 1. `--kubeconfig` when the CLI flag is passed
 2. the `KUBECONFIG` environment variable
