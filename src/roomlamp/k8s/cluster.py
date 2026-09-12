@@ -17,11 +17,20 @@ from roomlamp.k8s.delete import (
 )
 from roomlamp.k8s.nodes import ApiNodeReader
 from roomlamp.k8s.resources import ApiPodReader
-from roomlamp.k8s.watch import ApiPodWatcher, ApiWorkloadWatcher
+from roomlamp.k8s.storage import ApiStorageReader
+from roomlamp.k8s.watch import ApiPodWatcher, ApiStorageWatcher, ApiWorkloadWatcher
 from roomlamp.k8s.workloads import ApiWorkloadReader
 
 
-class ClusterAccess(ApiPodReader, ApiPodWatcher, ApiWorkloadReader, ApiWorkloadWatcher, ApiNodeReader):
+class ClusterAccess(
+    ApiPodReader,
+    ApiPodWatcher,
+    ApiWorkloadReader,
+    ApiWorkloadWatcher,
+    ApiStorageReader,
+    ApiStorageWatcher,
+    ApiNodeReader,
+):
     """Read, watch, apply, exec, and delete cluster objects with one shared API client."""
 
     def __init__(self, api_client: ApiClient) -> None:
@@ -29,6 +38,8 @@ class ClusterAccess(ApiPodReader, ApiPodWatcher, ApiWorkloadReader, ApiWorkloadW
         ApiPodWatcher.__init__(self, api_client)
         ApiWorkloadReader.__init__(self, api_client)
         ApiWorkloadWatcher.__init__(self, api_client)
+        ApiStorageReader.__init__(self, api_client)
+        ApiStorageWatcher.__init__(self, api_client)
         ApiNodeReader.__init__(self, api_client)
         self._dynamic: DynamicClient | None = None
         self._auth_api: AuthorizationV1Api | None = None

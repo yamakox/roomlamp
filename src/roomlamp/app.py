@@ -15,7 +15,7 @@ class RoomlampApp(App[None]):
 
     TITLE = 'Roomlamp'
     CSS = """
-    #home, #pods-wrap, #pod-detail-wrap, #workloads-wrap, #workload-detail-wrap, #logs-wrap, #exec-wrap {
+    #home, #pods-wrap, #pod-detail-wrap, #workloads-wrap, #workload-detail-wrap, #storage-wrap, #storage-detail-wrap, #logs-wrap, #exec-wrap {
         padding: 1 2;
     }
 
@@ -23,7 +23,7 @@ class RoomlampApp(App[None]):
         padding: 1 2;
     }
 
-    #home-status, #pods-status, #workloads-status, #logs-status, #exec-status {
+    #home-status, #pods-status, #workloads-status, #storage-status, #logs-status, #exec-status {
         margin-bottom: 1;
     }
 
@@ -37,6 +37,12 @@ class RoomlampApp(App[None]):
         padding: 1 2;
         border: solid $accent;
         background: $surface;
+    }
+
+    #delete-prompt {
+        width: 100%;
+        height: auto;
+        text-wrap: wrap;
     }
     """
     BINDINGS = [('q', 'quit', 'Quit')]

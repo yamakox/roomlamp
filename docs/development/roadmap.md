@@ -64,6 +64,9 @@ Useful Headlamp files when adding features:
 - Delete / evict: `frontend/src/components/common/Resource/DeleteButton.tsx`, `frontend/src/lib/k8s/KubeObject.ts`, `frontend/src/lib/k8s/pod.ts`
 - RBAC gating: `frontend/src/components/common/Resource/AuthVisible.tsx`, `frontend/src/lib/k8s/KubeObject.ts` (`getAuthorization`)
 - kubeconfig handling: `backend/pkg/kubeconfig/` (replace with the official Python client)
+- Storage lists: `frontend/src/components/storage/ClaimList.tsx`, `VolumeList.tsx`, `ClassList.tsx`
+- Storage details: `frontend/src/components/storage/ClaimDetails.tsx`, `VolumeDetails.tsx`, `ClassDetails.tsx`
+- Storage models: `frontend/src/lib/k8s/persistentVolumeClaim.ts`, `persistentVolume.ts`, `storageClass.ts`
 
 ## Commands
 
@@ -213,7 +216,7 @@ tests/test_auth.py
 
 ## Later phases
 
-Phases 1–5 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, and a two-level group menu. From here, one Headlamp in-cluster sidebar group is one phase.
+Phases 1–6 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, a two-level group menu, and **Storage**. From here, one Headlamp in-cluster sidebar group is one phase.
 
 Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse the list / detail / Watch / YAML / delete / RBAC path already shipped.
 
@@ -287,13 +290,34 @@ Low kinds (do not implement unless requested):
 
 Ingress stays **Normal**: it is still the common HTTP front for Service / Endpoints, and it was in the old wider-catalog goal. Listener TLS for Gateway API lives on Gateway / HTTPRoute, not on BackendTLSPolicy.
 
-### 6. Storage — planned
+### 6. Storage — done
 
 **Goal:** PersistentVolumeClaim, PersistentVolume, and StorageClass lists and details (Headlamp Storage).
 
-**Why this next:** it is the next sidebar group after Workloads. Phase 5's menu can open Storage without new footer keys. Claims are namespaced; volumes and classes are cluster-scoped — a small, clear extension of the existing table.
+**What shipped:**
 
-**First increment:** PVC list/detail + Watch, YAML / delete / RBAC reused. Then PV and StorageClass.
+- Core and storage.k8s.io reads through the official client (`k8s/storage.py`); Watch shares the existing watch loop (`k8s/watch.py`)
+- TUI: Storage group in the phase 5 menu opens PVC, PV, and StorageClass. No new footer keys
+- PVC is namespaced (`n` still switches namespace, including All namespaces). PV and StorageClass are cluster-scoped (`n` hidden)
+- List columns follow Headlamp plus `kubectl get` (phase, volume/claim, capacity, access modes, storage class, reclaim policy, provisioner, default, binding mode)
+- Read-only detail with Headlamp extraInfo that maps cleanly (requested size, volume mode, PV source, reason/message, SC parameters and mount options)
+- YAML / delete / RBAC reuse the phase 4 path. StorageClass SSAR uses `storage.k8s.io/storageclasses`
+
+**Keys:** `m` menu, `h` home, `n` namespace (PVC lists only), `r` refresh, `y` YAML and `d` delete from detail (and `d` from the list).
+
+**Layout:**
+
+```text
+src/roomlamp/k8s/storage.py
+src/roomlamp/ui/screens/storage.py
+src/roomlamp/ui/nav.py
+src/roomlamp/k8s/watch.py
+src/roomlamp/k8s/cluster.py
+src/roomlamp/k8s/auth.py
+src/roomlamp/k8s/delete.py
+tests/test_k8s_storage.py
+tests/test_storage.py
+```
 
 **Low:** VolumeAttributesClass.
 
@@ -354,7 +378,7 @@ Custom Resources stay **Low** and have no phase until requested.
 | 3. Common workloads | Done |
 | 4. Operator actions | Done |
 | 5. Home, metrics, and navigation | Done |
-| 6. Storage | Planned |
+| 6. Storage | Done |
 | 7. Network | Planned |
 | 8. Gateway | Planned |
 | 9. Security | Planned |

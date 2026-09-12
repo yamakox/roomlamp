@@ -40,6 +40,9 @@ def test_api_version_for_kind_matches_workload_groups() -> None:
     assert api_version_for_kind('Deployment') == 'apps/v1'
     assert api_version_for_kind('Job') == 'batch/v1'
     assert api_version_for_kind('CronJob') == 'batch/v1'
+    assert api_version_for_kind('PersistentVolumeClaim') == 'v1'
+    assert api_version_for_kind('PersistentVolume') == 'v1'
+    assert api_version_for_kind('StorageClass') == 'storage.k8s.io/v1'
     try:
         api_version_for_kind('ConfigMap')
     except ValueError as exc:

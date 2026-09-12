@@ -47,7 +47,6 @@ class DeleteConfirmScreen(ModalScreen[DeleteChoice | None]):
         self.allow_evict = allow_evict
 
     def compose(self) -> ComposeResult:
-        target = f'{self.item_namespace}/{self.item_name}' if self.item_namespace else self.item_name
         options: list[Option] = []
         if self.allow_delete:
             options.extend(
@@ -59,8 +58,10 @@ class DeleteConfirmScreen(ModalScreen[DeleteChoice | None]):
         if self.allow_evict:
             options.append(Option('Evict', id=OPTION_EVICT))
         yield Vertical(
-            Label(f'Delete {self.item_kind} {target}?'),
-            Label(f'Are you sure you want to delete item {self.item_name}?'),
+            Label(
+                confirm_message(self.item_kind, self.item_name, self.item_namespace),
+                id='delete-prompt',
+            ),
             OptionList(*options, id='delete-list'),
             id='delete-dialog',
         )
@@ -87,6 +88,11 @@ class DeleteConfirmScreen(ModalScreen[DeleteChoice | None]):
         self.dismiss(None)
 
 
+def confirm_message(kind: str, name: str, namespace: str | None) -> str:
+    target = f'{namespace}/{name}' if namespace else name
+    return f'Are you sure you want to delete {kind} {target}?'
+
+
 def selected_row_key(table: DataTable) -> str | None:
     if table.row_count == 0:
         return None
@@ -100,7 +106,7 @@ def request_delete(
     cluster: Any,
     kind: str,
     name: str,
-    namespace: str,
+    namespace: str | None,
     *,
     allow_delete: bool = True,
     allow_evict: bool = False,
@@ -136,7 +142,7 @@ async def _execute_delete(
     cluster: Any,
     kind: str,
     name: str,
-    namespace: str,
+    namespace: str | None,
     choice: DeleteChoice,
     on_success: Callable[[DeletedObject], None] | None,
 ) -> None:
@@ -157,9 +163,9 @@ def _call_cluster(
     cluster: Any,
     kind: str,
     name: str,
-    namespace: str,
+    namespace: str | None,
     choice: DeleteChoice,
 ) -> DeletedObject:
     if choice.action == ACTION_EVICT:
         return cluster.evict_pod(namespace, name)
-    return cluster.delete_resource(kind, name, namespace=namespace, force=choice.force)
+    return cluster.delete_resource(kind, name, namespace=namespace or None, force=choice.force)
