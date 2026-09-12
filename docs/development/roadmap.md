@@ -211,9 +211,54 @@ tests/test_auth.py
 
 **Not in this phase:** attach, debug / ephemeral containers, JSON Patch (Headlamp EditButton), server-side apply, create-from-empty YAML, live conflict watch in the editor, JSON log prettify, workload-aggregated logs, previous-container logs, a full VT/xterm emulator, multi-select delete, Namespace type-to-confirm (Namespaces are not in the catalog yet).
 
-## Later phases (Headlamp sidebar groups)
+## Later phases
 
-Phases 1–4 covered the **Workloads** sidebar (Pods and common controllers) plus operator actions on those objects. From here, one Headlamp in-cluster sidebar group is one phase. Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse the list / detail / Watch / YAML / delete / RBAC path already shipped.
+Phases 1–4 covered the **Workloads** sidebar (Pods and common controllers) plus operator actions on those objects. The TUI still treats the Pod list as home and uses `w` / `p` / `c` as footer shortcuts. Those keys cannot host Storage, Network, and the other Headlamp groups. Phase 5 is therefore **not** a sidebar group: it replaces that navigation with a cluster home (Headlamp **Clusters / main**) and a two-level menu. After that, one Headlamp in-cluster sidebar group is one phase.
+
+Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse the list / detail / Watch / YAML / delete / RBAC path already shipped.
+
+### 5. Home, metrics, and navigation — planned
+
+**Goal:** start on a cluster home, show CPU / memory / Pod / Node overview plus a Node list, and open kinds from a group menu (`m`) instead of workload-only footer keys.
+
+**Why this before Storage:** Headlamp's in-cluster sidebar is Cluster, then Workloads, then Storage. Roomlamp's footer is already full (`w` Workloads, `p` Pods, `c` Cluster). Adding Storage the same way would overflow the footer and leave Network / Gateway unreachable from home. A home screen plus a menu that lists every group, with only implemented kinds in the submenu, is the extension point for phases 6+.
+
+**What to ship:**
+
+- Default screen is always the home screen (kubeconfig errors stay here; no cluster API on that path)
+- Identity strip: Context, Cluster, User, kubeconfig path. No token / key / cert data. No in-TUI context switch (phase 12)
+- Overview bars (htop-style text, not circular charts), matching Headlamp `frontend/src/components/cluster/Overview.tsx`:
+  - CPU and Memory: node `metrics.k8s.io/v1beta1` usage totals over `status.capacity` (not allocatable)
+  - Pods: Ready (Succeeded or Ready=True) / total
+  - Nodes: Ready condition True / total
+- Node table under the overview (Headlamp `frontend/src/components/node/List.tsx` columns that fit a TUI): Name, CPU, Memory, Ready, Roles, Internal IP, Version, Age. Enter does **not** open Node detail
+- Metrics 404 (no Metrics Server): CPU / Memory unavailable or capacity-only; Pods / Nodes still from the core API. Metrics 403: hide metric bars and show a short error (fail closed)
+- Refresh: 60s poll + `r` (Headlamp overview does not Watch; the metrics API has no useful Watch)
+- Main menu (`m`): Cluster, Workloads, Storage, Network, Gateway, Security, Configuration (Headlamp `useSidebarItems.tsx` in-cluster order, without Map / CRDs / Advanced Search / Settings). Submenu lists **implemented kinds only**. A group with no kinds is visible but not selectable (notify, stay on the menu). Workloads kinds are the current `PICKER_KINDS` (no JobSet / LeaderWorkerSet)
+- Footer leftmost: `m` Menu, `h` Home (`h` hidden on home). Drop `w` / `p` / `c` from lists. Keep `n` on lists. YAML / logs / exec / delete keys stay as they are. Do not add `m` / `h` on exec (those keys go to the remote shell)
+- Screen stack: Home → list → detail → modals. Switching kind `switch_screen`s the list and leaves Home underneath. `h` pops until Home; it does not push another Home
+
+**Keys:** `m` menu, `h` home (not on home), `n` namespace (lists), `r` refresh, plus phase 4 operator keys on the screens that already have them.
+
+**Layout:**
+
+```text
+src/roomlamp/k8s/nodes.py
+src/roomlamp/k8s/metrics.py
+src/roomlamp/ui/nav.py
+src/roomlamp/ui/bindings.py
+src/roomlamp/ui/screens/home.py
+src/roomlamp/ui/screens/kinds.py   # group kind picker (was Workloads-only)
+src/roomlamp/k8s/cluster.py        # node + metrics readers
+tests/test_k8s_nodes.py
+tests/test_k8s_metrics.py
+tests/test_home.py
+tests/test_menu.py
+```
+
+**Not in this phase:** Node detail / YAML / delete, Namespace catalog objects, Events, Storage or other group screens, in-TUI context switch, Watch on the home screen, a `ui/widgets/` package.
+
+### Sidebar groups (phases 6+)
 
 **How to run a later phase** (same rules as Headlamp and Roomlamp `AGENTS.md`):
 
@@ -222,9 +267,10 @@ Phases 1–4 covered the **Workloads** sidebar (Pods and common controllers) plu
 - Prefer Watch over polling. Keep blocking API calls off the Textual event loop.
 - Hide or disable actions the current kubeconfig cannot perform (phase 4 SSAR).
 - Do not add kinds, screens, or packages until that increment starts. Do not freeze this list as a product checklist; skip or split a group when the user asks.
+- Add each shipped kind to `ui/nav.py` so it appears under its group in the phase 5 menu.
 - Plugins, Helm charts, the resource map, Electron-only port-forward, Advanced Search, Scheduling (alpha), and in-cluster OIDC stay out of scope unless requested.
 
-Headlamp sidebar order after Workloads (`frontend/src/components/Sidebar/useSidebarItems.tsx`): Storage, Network, Gateway, Security, Configuration, then Custom Resources. Cluster (Namespaces / Nodes) sits above Workloads in Headlamp; Roomlamp already has a namespace picker, so Namespace/Node **objects** wait until a later cluster-catalog phase. JobSet and LeaderWorkerSet stay out of Workloads until requested.
+Headlamp sidebar order after Workloads (`frontend/src/components/Sidebar/useSidebarItems.tsx`): Storage, Network, Gateway, Security, Configuration, then Custom Resources. Cluster sits above Workloads in Headlamp. Phase 5 already shows a Node **list** on home; Namespace/Node **objects** (detail, YAML, delete) wait until the cluster-catalog phase. The existing `n` namespace picker stays. JobSet and LeaderWorkerSet stay out of Workloads until requested.
 
 **Priority:**
 
@@ -241,11 +287,11 @@ Low kinds (do not implement unless requested):
 
 Ingress stays **Normal**: it is still the common HTTP front for Service / Endpoints, and it was in the old wider-catalog goal. Listener TLS for Gateway API lives on Gateway / HTTPRoute, not on BackendTLSPolicy.
 
-### 5. Storage — planned
+### 6. Storage — planned
 
 **Goal:** PersistentVolumeClaim, PersistentVolume, and StorageClass lists and details (Headlamp Storage).
 
-**Why this next:** it is the next sidebar group after Workloads. Claims are namespaced; volumes and classes are cluster-scoped — a small, clear extension of the existing table.
+**Why this next:** it is the next sidebar group after Workloads. Phase 5's menu can open Storage without new footer keys. Claims are namespaced; volumes and classes are cluster-scoped — a small, clear extension of the existing table.
 
 **First increment:** PVC list/detail + Watch, YAML / delete / RBAC reused. Then PV and StorageClass.
 
@@ -253,15 +299,15 @@ Ingress stays **Normal**: it is still the common HTTP front for Service / Endpoi
 
 **Not in this phase:** CSI extras beyond Headlamp's Storage subList, snapshots, other sidebar groups.
 
-### 6. Network — planned
+### 7. Network — planned
 
 **Goal:** Headlamp Network kinds. Start with Service. Then Endpoints and EndpointSlices (already used in this lab). Then Ingress.
 
 **Low:** IngressClass, NetworkPolicy.
 
-**Not in this phase:** Port Forwarding (Headlamp hides it except in Electron). Gateway API belongs in phase 7.
+**Not in this phase:** Port Forwarding (Headlamp hides it except in Electron). Gateway API belongs in phase 8.
 
-### 7. Gateway — planned
+### 8. Gateway — planned
 
 **Goal:** Gateway API objects from Headlamp's Gateway (beta) group, when the cluster has those CRDs.
 
@@ -271,13 +317,13 @@ Ingress stays **Normal**: it is still the common HTTP front for Service / Endpoi
 
 **Not in this phase:** installing Gateway CRDs.
 
-### 8. Security — planned
+### 9. Security — planned
 
 **Goal:** ServiceAccount, Role, and RoleBinding (Headlamp Security subList).
 
 **Not in this phase:** ClusterRole / ClusterRoleBinding unless requested (they are not on Headlamp's Security subList). Token create/show UI.
 
-### 9. Configuration — planned
+### 10. Configuration — planned
 
 **Goal:** ConfigMap first, then Secret.
 
@@ -285,13 +331,13 @@ Ingress stays **Normal**: it is still the common HTTP front for Service / Endpoi
 
 **Not in this phase:** decoding or copying Secret data into logs. Keep Secret bytes off the status line.
 
-### 10. Cluster catalog — planned
+### 11. Cluster catalog — planned
 
-**Goal:** Namespace and Node as catalog objects (Headlamp Cluster subList), including Namespace type-to-confirm delete if delete stays in scope.
+**Goal:** Namespace as a catalog object, and Node **detail** / YAML / delete (Headlamp Cluster subList). The home screen already lists Nodes (phase 5). Include Namespace type-to-confirm delete if delete stays in scope.
 
-**Not in this phase:** Advanced Search, the resource map, replacing the existing namespace picker.
+**Not in this phase:** Advanced Search, the resource map, replacing the existing namespace picker, replacing the home Node table.
 
-### 11. Kubeconfig contexts — planned
+### 12. Kubeconfig contexts — planned
 
 **Goal:** switch cluster context inside the TUI from kubeconfig, the same way kubectl uses contexts. This is not a Headlamp sidebar group; it replaces Headlamp's multi-cluster chooser for a local process.
 
@@ -307,10 +353,11 @@ Custom Resources stay **Low** and have no phase until requested.
 | 2. First read path | Done |
 | 3. Common workloads | Done |
 | 4. Operator actions | Done |
-| 5. Storage | Planned |
-| 6. Network | Planned |
-| 7. Gateway | Planned |
-| 8. Security | Planned |
-| 9. Configuration | Planned |
-| 10. Cluster catalog | Planned |
-| 11. Kubeconfig contexts | Planned |
+| 5. Home, metrics, and navigation | Planned |
+| 6. Storage | Planned |
+| 7. Network | Planned |
+| 8. Gateway | Planned |
+| 9. Security | Planned |
+| 10. Configuration | Planned |
+| 11. Cluster catalog | Planned |
+| 12. Kubeconfig contexts | Planned |
