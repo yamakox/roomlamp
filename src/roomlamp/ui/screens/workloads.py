@@ -18,8 +18,8 @@ from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.resources import ALL_NAMESPACES
 from roomlamp.k8s.watch import apply_watch_event
 from roomlamp.k8s.workloads import KIND_LABELS, KIND_SPECS, POD_KIND, WorkloadDetail, WorkloadSummary
+from roomlamp.ui.bindings import HOME_BINDING, MENU_BINDING, NavigationMixin
 from roomlamp.ui.screens.delete import request_delete, selected_row_key
-from roomlamp.ui.screens.kinds import WorkloadKindScreen
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
 
@@ -60,12 +60,11 @@ def show_kind_list(
         app.push_screen(screen)
 
 
-class WorkloadListScreen(Screen[None]):
+class WorkloadListScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
+        MENU_BINDING,
+        HOME_BINDING,
         ('n', 'pick_namespace', 'Namespace'),
-        ('w', 'pick_kind', 'Workloads'),
-        ('p', 'show_pods', 'Pods'),
-        ('c', 'show_cluster', 'Cluster'),
         ('d', 'delete', 'Delete'),
         ('r', 'refresh', 'Refresh'),
     ]
@@ -151,37 +150,10 @@ class WorkloadListScreen(Screen[None]):
         else:
             self._load_sync()
 
-    def action_pick_kind(self) -> None:
-        self.app.push_screen(WorkloadKindScreen(self.kind), callback=self._on_kind_chosen)
-
     def _on_kind_chosen(self, chosen: str | None) -> None:
         if chosen is None or chosen == self.kind:
             return
-        show_kind_list(
-            self.app,
-            self.info,
-            self.cluster,
-            chosen,
-            self.namespace,
-            self.enable_watch,
-            replace=chosen != POD_KIND,
-        )
-
-    def action_show_pods(self) -> None:
-        show_kind_list(
-            self.app,
-            self.info,
-            self.cluster,
-            POD_KIND,
-            self.namespace,
-            self.enable_watch,
-            replace=False,
-        )
-
-    def action_show_cluster(self) -> None:
-        from roomlamp.ui.screens.home import HomeScreen
-
-        self.app.push_screen(HomeScreen(self.info))
+        self._on_nav_kind(chosen)
 
     async def action_refresh(self) -> None:
         self._stop_watch()
@@ -323,8 +295,10 @@ class WorkloadListScreen(Screen[None]):
         self.sub_title = f'{context} / {namespace} / {KIND_LABELS[self.kind]}'
 
 
-class WorkloadDetailScreen(Screen[None]):
+class WorkloadDetailScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
+        MENU_BINDING,
+        HOME_BINDING,
         ('y', 'show_yaml', 'YAML'),
         ('d', 'delete', 'Delete'),
         ('escape', 'app.pop_screen', 'Back'),
@@ -335,6 +309,7 @@ class WorkloadDetailScreen(Screen[None]):
         super().__init__()
         self.detail = detail
         self.cluster = cluster
+        self.kind = detail.kind
         self._auth = initial_actions(cluster, detail.kind)
 
     def on_mount(self) -> None:

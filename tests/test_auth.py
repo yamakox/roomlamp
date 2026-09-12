@@ -2,6 +2,7 @@ import asyncio
 
 from textual.widgets import DataTable, OptionList, TextArea
 
+from helpers import open_kind
 from roomlamp.app import RoomlampApp
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.delete import ACTION_DELETE, DeletedObject
@@ -123,7 +124,7 @@ def enabled_actions(screen) -> set[str]:
 
 
 async def _open_pod_detail(app: RoomlampApp, pilot) -> PodDetailScreen:
-    await pilot.pause()
+    await open_kind(app, pilot)
     screen = app.screen
     assert isinstance(screen, PodListScreen)
     await screen._open_detail('default/web')
@@ -244,13 +245,13 @@ def test_pod_list_hides_delete_when_unauthorized() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
             await screen._load_row_auth('default/web')
             await pilot.pause()
             assert 'delete' not in enabled_actions(screen)
-            assert app.query_one('#pods', DataTable).row_count == 1
+            assert app.screen.query_one('#pods', DataTable).row_count == 1
             await pilot.press('d')
             await pilot.pause()
             assert isinstance(app.screen, PodListScreen)

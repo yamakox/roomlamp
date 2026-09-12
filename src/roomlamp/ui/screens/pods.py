@@ -18,9 +18,8 @@ from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodSummary
 from roomlamp.k8s.watch import apply_watch_event
 from roomlamp.k8s.workloads import POD_KIND
+from roomlamp.ui.bindings import HOME_BINDING, MENU_BINDING, NavigationMixin
 from roomlamp.ui.screens.delete import request_delete, selected_row_key
-from roomlamp.ui.screens.home import HomeScreen
-from roomlamp.ui.screens.kinds import WorkloadKindScreen
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.pod_detail import PodDetailScreen
 
@@ -53,11 +52,11 @@ def sort_pods(pods: list[PodSummary], column: int, ascending: bool) -> list[PodS
     return sorted(pods, key=key, reverse=not ascending)
 
 
-class PodListScreen(Screen[None]):
+class PodListScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
+        MENU_BINDING,
+        HOME_BINDING,
         ('n', 'pick_namespace', 'Namespace'),
-        ('w', 'pick_kind', 'Workloads'),
-        ('c', 'show_cluster', 'Cluster'),
         ('d', 'delete', 'Delete'),
         ('r', 'refresh', 'Refresh'),
     ]
@@ -72,6 +71,7 @@ class PodListScreen(Screen[None]):
         super().__init__()
         self.info = info
         self.cluster = cluster
+        self.kind = POD_KIND
         self.namespace = namespace
         self.enable_watch = enable_watch
         self._namespaces: list[str] = []
@@ -141,26 +141,8 @@ class PodListScreen(Screen[None]):
         else:
             self._load_sync()
 
-    def action_pick_kind(self) -> None:
-        self.app.push_screen(WorkloadKindScreen(POD_KIND), callback=self._on_kind_chosen)
-
     def _on_kind_chosen(self, chosen: str | None) -> None:
-        if chosen is None or chosen == POD_KIND:
-            return
-        from roomlamp.ui.screens.workloads import show_kind_list
-
-        show_kind_list(
-            self.app,
-            self.info,
-            self.cluster,
-            chosen,
-            self.namespace,
-            self.enable_watch,
-            replace=False,
-        )
-
-    def action_show_cluster(self) -> None:
-        self.app.push_screen(HomeScreen(self.info))
+        self._on_nav_kind(chosen)
 
     async def action_refresh(self) -> None:
         self._stop_watch()

@@ -29,6 +29,7 @@ class PodSummary:
     ready: str
     restarts: int
     node: str | None
+    condition_ready: bool = False
 
     @property
     def key(self) -> str:
@@ -177,6 +178,7 @@ def summarize_pod(pod: V1Pod) -> PodSummary:
         ready=f'{ready}/{total}',
         restarts=restarts,
         node=spec.node_name if spec else None,
+        condition_ready=_pod_condition_ready(pod),
     )
 
 
@@ -257,6 +259,16 @@ def _first_running_name(statuses: object | None) -> str:
             if name:
                 return str(name)
     return ''
+
+
+def _pod_condition_ready(pod: V1Pod) -> bool:
+    status = pod.status
+    if status is None:
+        return False
+    for condition in status.conditions or []:
+        if getattr(condition, 'type', None) == 'Ready' and getattr(condition, 'status', None) == 'True':
+            return True
+    return False
 
 
 def _container_counts(pod: V1Pod) -> tuple[int, int, int]:

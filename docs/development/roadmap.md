@@ -213,17 +213,15 @@ tests/test_auth.py
 
 ## Later phases
 
-Phases 1–4 covered the **Workloads** sidebar (Pods and common controllers) plus operator actions on those objects. The TUI still treats the Pod list as home and uses `w` / `p` / `c` as footer shortcuts. Those keys cannot host Storage, Network, and the other Headlamp groups. Phase 5 is therefore **not** a sidebar group: it replaces that navigation with a cluster home (Headlamp **Clusters / main**) and a two-level menu. After that, one Headlamp in-cluster sidebar group is one phase.
+Phases 1–5 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, and a two-level group menu. From here, one Headlamp in-cluster sidebar group is one phase.
 
 Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse the list / detail / Watch / YAML / delete / RBAC path already shipped.
 
-### 5. Home, metrics, and navigation — planned
+### 5. Home, metrics, and navigation — done
 
 **Goal:** start on a cluster home, show CPU / memory / Pod / Node overview plus a Node list, and open kinds from a group menu (`m`) instead of workload-only footer keys.
 
-**Why this before Storage:** Headlamp's in-cluster sidebar is Cluster, then Workloads, then Storage. Roomlamp's footer is already full (`w` Workloads, `p` Pods, `c` Cluster). Adding Storage the same way would overflow the footer and leave Network / Gateway unreachable from home. A home screen plus a menu that lists every group, with only implemented kinds in the submenu, is the extension point for phases 6+.
-
-**What to ship:**
+**What shipped:**
 
 - Default screen is always the home screen (kubeconfig errors stay here; no cluster API on that path)
 - Identity strip: Context, Cluster, User, kubeconfig path. No token / key / cert data. No in-TUI context switch (phase 12)
@@ -232,11 +230,11 @@ Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse 
   - Pods: Ready (Succeeded or Ready=True) / total
   - Nodes: Ready condition True / total
 - Node table under the overview (Headlamp `frontend/src/components/node/List.tsx` columns that fit a TUI): Name, CPU, Memory, Ready, Roles, Internal IP, Version, Age. Enter does **not** open Node detail
-- Metrics 404 (no Metrics Server): CPU / Memory unavailable or capacity-only; Pods / Nodes still from the core API. Metrics 403: hide metric bars and show a short error (fail closed)
+- Metrics 404 (no Metrics Server): CPU / Memory unavailable; Pods / Nodes still from the core API. Metrics 403: hide metric bars and show a short error (fail closed)
 - Refresh: 60s poll + `r` (Headlamp overview does not Watch; the metrics API has no useful Watch)
-- Main menu (`m`): Cluster, Workloads, Storage, Network, Gateway, Security, Configuration (Headlamp `useSidebarItems.tsx` in-cluster order, without Map / CRDs / Advanced Search / Settings). Submenu lists **implemented kinds only**. A group with no kinds is visible but not selectable (notify, stay on the menu). Workloads kinds are the current `PICKER_KINDS` (no JobSet / LeaderWorkerSet)
-- Footer leftmost: `m` Menu, `h` Home (`h` hidden on home). Drop `w` / `p` / `c` from lists. Keep `n` on lists. YAML / logs / exec / delete keys stay as they are. Do not add `m` / `h` on exec (those keys go to the remote shell)
-- Screen stack: Home → list → detail → modals. Switching kind `switch_screen`s the list and leaves Home underneath. `h` pops until Home; it does not push another Home
+- Main menu (`m`): Cluster, Workloads, Storage, Network, Gateway, Security, Configuration. Submenu lists **implemented kinds only**. A group with no kinds is visible but not selectable (notify, stay on the menu). Workloads kinds are the current `PICKER_KINDS` (no JobSet / LeaderWorkerSet)
+- Footer leftmost: `m` Menu, `h` Home (`h` hidden on home). Drop `w` / `p` / `c` from lists. Keep `n` on lists. YAML / logs / exec / delete keys stay as they are. Do not add `m` / `h` on exec
+- Screen stack: Home → list → detail → modals. Opening a kind pops back to Home then pushes the list. `h` pops until Home; it does not push another Home
 
 **Keys:** `m` menu, `h` home (not on home), `n` namespace (lists), `r` refresh, plus phase 4 operator keys on the screens that already have them.
 
@@ -247,9 +245,11 @@ src/roomlamp/k8s/nodes.py
 src/roomlamp/k8s/metrics.py
 src/roomlamp/ui/nav.py
 src/roomlamp/ui/bindings.py
+src/roomlamp/ui/usage.py
 src/roomlamp/ui/screens/home.py
-src/roomlamp/ui/screens/kinds.py   # group kind picker (was Workloads-only)
-src/roomlamp/k8s/cluster.py        # node + metrics readers
+src/roomlamp/ui/screens/menu.py
+src/roomlamp/ui/screens/kinds.py
+src/roomlamp/k8s/cluster.py
 tests/test_k8s_nodes.py
 tests/test_k8s_metrics.py
 tests/test_home.py
@@ -353,7 +353,7 @@ Custom Resources stay **Low** and have no phase until requested.
 | 2. First read path | Done |
 | 3. Common workloads | Done |
 | 4. Operator actions | Done |
-| 5. Home, metrics, and navigation | Planned |
+| 5. Home, metrics, and navigation | Done |
 | 6. Storage | Planned |
 | 7. Network | Planned |
 | 8. Gateway | Planned |
