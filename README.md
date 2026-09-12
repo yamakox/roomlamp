@@ -21,6 +21,8 @@ uv tool install --from https://github.com/yamakox/roomlamp.git roomlamp
 roomlamp
 ```
 
+Use "roomlamp --help" for more information about options.
+
 Roomlamp uses the same kubeconfig as kubectl (`~/.kube/config` by default). Press `q` to quit.
 
 See the [user manual](docs/manual/usage.md) for prerequisites, kubeconfig setup, CLI flags, and what this release can do.
