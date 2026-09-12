@@ -19,12 +19,13 @@ def test_home_screen_shows_current_context() -> None:
 
     async def _run() -> None:
         async with app.run_test():
-            summary = app.query_one('#cluster-summary', Static)
-            text = str(summary.content)
+            identity = app.query_one('#home-identity', Static)
+            text = str(identity.content)
             assert isinstance(app.screen, HomeScreen)
             assert 'test-context' in text
             assert 'test-cluster' in text
-            assert 'roomlamp-test' in text
+            assert 'test-user' in text
+            assert '/tmp/kubeconfig' in text
             assert 'dummy-token' not in text
 
     asyncio.run(_run())
@@ -44,8 +45,8 @@ def test_home_screen_shows_load_error() -> None:
 
     async def _run() -> None:
         async with app.run_test():
-            summary = app.query_one('#cluster-summary', Static)
-            text = str(summary.content)
+            identity = app.query_one('#home-identity', Static)
+            text = str(identity.content)
             assert 'Could not load kubeconfig' in text
             assert 'No such file' in text
 

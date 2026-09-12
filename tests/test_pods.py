@@ -2,6 +2,7 @@ import asyncio
 import threading
 import time
 
+from helpers import open_kind
 from roomlamp.app import RoomlampApp
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodDetail, PodSummary
@@ -77,9 +78,9 @@ def test_pod_list_shows_namespace_pods() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             assert isinstance(app.screen, PodListScreen)
-            table = app.query_one('#pods', DataTable)
+            table = app.screen.query_one('#pods', DataTable)
             assert table.row_count == 1
             row = table.get_row_at(0)
             assert 'web' in row
@@ -98,7 +99,7 @@ def test_pod_detail_opens_from_row() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
             await screen._open_detail('default/web')
@@ -116,7 +117,7 @@ def test_namespace_key_opens_picker() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             await pilot.press('n')
             await pilot.pause()
             assert isinstance(app.screen, NamespaceScreen)
@@ -143,12 +144,12 @@ def test_header_click_sorts_then_reverses() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
             screen.namespace = ALL_NAMESPACES
             screen._load_sync()
-            table = app.query_one('#pods', DataTable)
+            table = app.screen.query_one('#pods', DataTable)
             columns = table.columns
             name_key = next(key for key, column in columns.items() if column.label.plain == 'Name')
             screen.on_data_table_header_selected(DataTable.HeaderSelected(table, name_key, 1, columns[name_key].label))
@@ -171,7 +172,7 @@ def test_pod_yaml_and_logs_open_from_detail() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
             await screen._open_detail('default/web')
@@ -274,7 +275,7 @@ def test_leaving_followed_logs_returns_to_pod_list_quickly() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
             await screen._open_detail('default/web')

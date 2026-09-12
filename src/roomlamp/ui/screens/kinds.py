@@ -1,4 +1,4 @@
-"""Modal list for switching the active workload kind."""
+"""Modal list for picking a kind inside a sidebar group."""
 
 from __future__ import annotations
 
@@ -8,32 +8,32 @@ from textual.screen import ModalScreen
 from textual.widgets import Label, OptionList
 from textual.widgets.option_list import Option
 
-from roomlamp.k8s.workloads import KIND_LABELS, PICKER_KINDS
+from roomlamp.k8s.workloads import KIND_LABELS, PICKER_KINDS, POD_KIND
+from roomlamp.ui.nav import NavGroup, NavKind
+from roomlamp.ui.screens.menu import current_kind_index
 
 
-class WorkloadKindScreen(ModalScreen[str | None]):
+class KindPickerScreen(ModalScreen[str | None]):
     BINDINGS = [('escape', 'cancel', 'Cancel')]
 
-    def __init__(self, current: str) -> None:
+    def __init__(self, group: NavGroup, current: str | None = None) -> None:
         super().__init__()
+        self.group = group
         self.current = current
 
     def compose(self) -> ComposeResult:
         options = []
-        for kind in PICKER_KINDS:
-            mark = ' (current)' if kind == self.current else ''
-            options.append(Option(f'{KIND_LABELS[kind]}{mark}', id=kind))
+        for item in self.group.kinds:
+            mark = ' (current)' if item.kind == self.current else ''
+            options.append(Option(f'{item.label}{mark}', id=item.kind))
         yield Vertical(
-            Label('Select workload'),
+            Label(f'Select {self.group.label}'),
             OptionList(*options, id='kind-list'),
             id='kind-dialog',
         )
 
     def on_mount(self) -> None:
-        highlighted = 0
-        if self.current in PICKER_KINDS:
-            highlighted = PICKER_KINDS.index(self.current)
-        self.query_one('#kind-list', OptionList).highlighted = highlighted
+        self.query_one('#kind-list', OptionList).highlighted = current_kind_index(self.group, self.current)
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         option_id = event.option_id
@@ -44,3 +44,17 @@ class WorkloadKindScreen(ModalScreen[str | None]):
 
     def action_cancel(self) -> None:
         self.dismiss(None)
+
+
+class WorkloadKindScreen(KindPickerScreen):
+    """Workloads-only picker kept for tests that construct it directly."""
+
+    def __init__(self, current: str = POD_KIND) -> None:
+        super().__init__(
+            NavGroup(
+                'workloads',
+                'Workloads',
+                tuple(NavKind(kind, KIND_LABELS[kind]) for kind in PICKER_KINDS),
+            ),
+            current,
+        )

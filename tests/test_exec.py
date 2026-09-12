@@ -4,6 +4,7 @@ import time
 
 from textual.widgets import Log
 
+from helpers import open_kind
 from roomlamp.app import RoomlampApp
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.exec import ExecPoll
@@ -112,7 +113,7 @@ def _info() -> ClusterInfo:
 
 
 async def _open_exec(app: RoomlampApp, pilot: object) -> PodExecScreen:
-    await pilot.pause()
+    await open_kind(app, pilot)
     screen = app.screen
     assert isinstance(screen, PodListScreen)
     await screen._open_detail('default/web')

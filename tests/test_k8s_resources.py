@@ -8,6 +8,7 @@ from kubernetes.client.models import (
     V1ContainerStatus,
     V1ObjectMeta,
     V1Pod,
+    V1PodCondition,
     V1PodSpec,
     V1PodStatus,
 )
@@ -51,6 +52,7 @@ def _pod(
                     state=V1ContainerState(running=V1ContainerStateRunning()),
                 )
             ],
+            conditions=[V1PodCondition(type='Ready', status='True' if ready else 'False')],
         ),
     )
 
@@ -64,6 +66,7 @@ def test_summarize_pod_ready_and_restarts() -> None:
     assert summary.restarts == 2
     assert summary.node == 'node-a'
     assert summary.key == 'default/web'
+    assert summary.condition_ready is True
 
 
 def test_detail_pod_includes_labels_and_containers() -> None:

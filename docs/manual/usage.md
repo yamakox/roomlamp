@@ -1,6 +1,6 @@
 # User manual
 
-Roomlamp is a terminal UI for Kubernetes. This page describes the **current workload lists**: Pods plus Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, and CronJob. You can switch namespaces and workload types. From a detail view you can edit YAML and apply it, open Pod logs, exec into a Pod, or delete the object. Keys for actions the current kubeconfig user cannot perform are hidden.
+Roomlamp is a terminal UI for Kubernetes. This page describes the **cluster home** (CPU / memory / Pod / Node overview and a Node list) plus **workload lists**: Pods, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, and CronJob. Open kinds from the main menu. From a detail view you can edit YAML and apply it, open Pod logs, exec into a Pod, or delete the object. Keys for actions the current kubeconfig user cannot perform are hidden.
 
 ## Prerequisites
 
@@ -40,7 +40,7 @@ uv sync
 uv run roomlamp
 ```
 
-If kubeconfig loads, the first screen is the Pod list for the context namespace (or `default`). Press `w` to open Deployments and the other workload lists. If kubeconfig is missing or invalid, Roomlamp still starts and shows the error on the cluster screen.
+If kubeconfig loads, the first screen is the cluster home (context / cluster / user, usage overview, and a Node list). Press `m` to open the main menu, then Workloads for Pods and the other lists. If kubeconfig is missing or invalid, Roomlamp still starts and shows the error on the home screen.
 
 ## Kubeconfig
 
@@ -63,18 +63,18 @@ The TUI does not display tokens, client keys, or certificate data.
 
 | Key | Action |
 | --- | --- |
-| `enter` | Open the selected item's detail |
+| `m` | Open the main menu (groups, then kinds) |
+| `h` | Return to the home screen (hidden on home) |
+| `enter` | Open the selected item's detail (not used on the home Node table) |
 | `n` | Switch namespace (includes All namespaces) |
-| `w` | Switch workload type |
-| `c` | Show cluster / kubeconfig info (on a list). Pick a container (on Pod logs) |
-| `p` | Open the Pod list |
+| `c` | Pick a container (on Pod logs) |
 | `y` | Edit YAML (from a detail screen) |
 | `l` | View Pod logs (from Pod detail) |
 | `e` | Exec into a Pod (from Pod detail) |
 | `d` | Delete the selected item (list or detail). Confirm, then Delete / Force delete / Evict (Pods) |
 | `f2` | Pick a container (on Pod exec) |
 | `ctrl+]` | Detach from Pod exec |
-| `r` | Reload the current list or logs |
+| `r` | Reload the home overview, current list, or logs |
 | `ctrl+s` | Apply the YAML editor buffer |
 | `f8` | Dry-run the YAML editor buffer |
 | `ctrl+r` | Reload YAML from the API |
@@ -83,10 +83,11 @@ The TUI does not display tokens, client keys, or certificate data.
 
 ## What you see
 
-List columns follow Headlamp and `kubectl get` for that kind. Click a column header to sort ascending; click the same header again to sort descending. A different header starts over at ascending. The header subtitle is `context / namespace` (workload lists also show the kind). The list updates from the Kubernetes Watch API when the connection stays up. API errors show the HTTP Reason first, then the response body (JSON Status objects as YAML).
+The home screen shows Context, Cluster, User, and the kubeconfig path, then htop-style bars for CPU, Memory, Pods, and Nodes, then a Node table (Name, CPU, Memory, Ready, Roles, Internal IP, Version, Age). CPU and Memory come from Metrics Server (`metrics.k8s.io`); if it is missing, those bars show unavailable. If metrics are forbidden, those bars are hidden. The home view refreshes every 60 seconds and with `r`. List columns follow Headlamp and `kubectl get` for that kind. Click a column header to sort ascending; click the same header again to sort descending. A different header starts over at ascending. The header subtitle is `context / namespace` (workload lists also show the kind). Resource lists update from the Kubernetes Watch API when the connection stays up. API errors show the HTTP Reason first, then the response body (JSON Status objects as YAML).
 
 | Kind | Columns |
 | --- | --- |
+| Nodes (home) | Name, CPU, Memory, Ready, Roles, Internal IP, Version, Age |
 | Pods | Namespace, Name, Ready, Status, Restarts, Node |
 | Deployments | Namespace, Name, Ready, Up-to-date, Available, Age |
 | ReplicaSets | Namespace, Name, Desired, Current, Ready, Age |
@@ -99,6 +100,7 @@ Detail views summarize metadata, kind-specific status fields, labels, and contai
 
 ## Current limitations
 
+- No Node detail, YAML, or delete (the home Node table is list-only)
 - No JobSet or LeaderWorkerSet lists
 - No attach or debug / ephemeral containers
 - Exec is a TTY text log (ANSI stripped), not a full terminal emulator; tools such as vim or top may not render correctly

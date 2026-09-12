@@ -3,6 +3,7 @@ import asyncio
 from kubernetes.client.exceptions import ApiException
 from textual.widgets import DataTable, OptionList
 
+from helpers import open_kind
 from roomlamp.app import RoomlampApp
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.delete import ACTION_DELETE, ACTION_EVICT, DeletedObject
@@ -200,10 +201,10 @@ def test_pod_list_delete_removes_row() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
-            table = app.query_one('#pods', DataTable)
+            table = app.screen.query_one('#pods', DataTable)
             assert table.row_count == 1
             screen.action_delete()
             await pilot.pause()
@@ -212,7 +213,7 @@ def test_pod_list_delete_removes_row() -> None:
             await pilot.pause()
             assert cluster.deleted == [('Pod', 'web', 'default', False)]
             assert isinstance(app.screen, PodListScreen)
-            assert app.query_one('#pods', DataTable).row_count == 0
+            assert app.screen.query_one('#pods', DataTable).row_count == 0
 
     asyncio.run(_run())
 
@@ -223,7 +224,7 @@ def test_workload_detail_delete_has_no_evict() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
             screen._on_kind_chosen(DEPLOYMENT)
@@ -248,7 +249,7 @@ def test_workload_detail_delete_has_no_evict() -> None:
 
 
 async def _open_pod_detail(app: RoomlampApp, pilot) -> None:
-    await pilot.pause()
+    await open_kind(app, pilot)
     screen = app.screen
     assert isinstance(screen, PodListScreen)
     await screen._open_detail('default/web')

@@ -3,11 +3,12 @@ from datetime import datetime, timezone
 
 from textual.widgets import DataTable, Static, TextArea
 
+from helpers import open_kind
 from roomlamp.app import RoomlampApp
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodDetail, PodSummary
 from roomlamp.k8s.workloads import DEPLOYMENT, REPLICASET, WorkloadDetail, WorkloadSummary
-from roomlamp.ui.screens.kinds import WorkloadKindScreen
+from roomlamp.ui.screens.menu import MainMenuScreen
 from roomlamp.ui.screens.pods import PodListScreen
 from roomlamp.ui.screens.workloads import WorkloadDetailScreen, WorkloadListScreen, sort_workloads
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
@@ -132,7 +133,7 @@ def test_workload_list_shows_namespace_deployments() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
             screen._on_kind_chosen(DEPLOYMENT)
@@ -158,7 +159,7 @@ def test_workload_detail_opens_from_row() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
             screen._on_kind_chosen(DEPLOYMENT)
@@ -182,10 +183,10 @@ def test_workload_key_opens_picker() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
+            await open_kind(app, pilot)
+            await pilot.press('m')
             await pilot.pause()
-            await pilot.press('w')
-            await pilot.pause()
-            assert isinstance(app.screen, WorkloadKindScreen)
+            assert isinstance(app.screen, MainMenuScreen)
 
     asyncio.run(_run())
 
@@ -195,7 +196,7 @@ def test_switch_to_replicaset_list() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
             screen._on_kind_chosen(DEPLOYMENT)
@@ -247,7 +248,7 @@ def test_workload_yaml_opens_from_detail() -> None:
 
     async def _run() -> None:
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await open_kind(app, pilot)
             screen = app.screen
             assert isinstance(screen, PodListScreen)
             screen._on_kind_chosen(DEPLOYMENT)
