@@ -1,18 +1,20 @@
 import asyncio
 
-from textual.widgets import OptionList
+from textual.widgets import DataTable, OptionList
 
 from roomlamp.app import RoomlampApp
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.metrics import NodeMetricsResult
 from roomlamp.k8s.nodes import HomeSnapshot, build_home_snapshot
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodDetail, PodSummary
+from roomlamp.k8s.storage import PVC, StorageSummary
 from roomlamp.k8s.workloads import POD_KIND
 from roomlamp.ui.nav import NAV_GROUPS
 from roomlamp.ui.screens.home import HomeScreen
 from roomlamp.ui.screens.kinds import KindPickerScreen
 from roomlamp.ui.screens.menu import MainMenuScreen
 from roomlamp.ui.screens.pods import PodListScreen
+from roomlamp.ui.screens.storage import StorageListScreen
 
 
 class FakeCluster:
@@ -45,6 +47,18 @@ class FakeCluster:
             containers=(),
         )
 
+    def list_storage(self, kind: str, namespace: str) -> list[StorageSummary]:
+        return [
+            StorageSummary(
+                kind=PVC,
+                name='data',
+                namespace='default',
+                created=None,
+                cells=('default', 'data', 'Bound', 'pvc-abc', '8Gi', 'ReadWriteOnce', 'standard', '1d'),
+                sort_keys=('default', 'data', 'Bound', 'pvc-abc', '8Gi', 'ReadWriteOnce', 'standard', 1.0),
+            )
+        ]
+
 
 def _info() -> ClusterInfo:
     return ClusterInfo(
@@ -61,7 +75,7 @@ def enabled_actions(screen) -> set[str]:
     return {info.binding.action for info in screen.active_bindings.values() if info.enabled}
 
 
-def test_nav_groups_only_workloads_implemented() -> None:
+def test_nav_groups_workloads_and_storage_implemented() -> None:
     labels = [group.label for group in NAV_GROUPS]
     assert labels == [
         'Cluster',
@@ -73,9 +87,11 @@ def test_nav_groups_only_workloads_implemented() -> None:
         'Configuration',
     ]
     implemented = [group.id for group in NAV_GROUPS if group.implemented]
-    assert implemented == ['workloads']
+    assert implemented == ['workloads', 'storage']
     kinds = next(group.kinds for group in NAV_GROUPS if group.id == 'workloads')
     assert kinds[0].kind == POD_KIND
+    storage = next(group.kinds for group in NAV_GROUPS if group.id == 'storage')
+    assert [item.kind for item in storage] == ['PersistentVolumeClaim', 'PersistentVolume', 'StorageClass']
 
 
 def test_menu_empty_group_stays_open() -> None:
@@ -139,5 +155,41 @@ def test_menu_workloads_opens_pod_list() -> None:
             await pilot.press('h')
             await pilot.pause()
             assert isinstance(app.screen, HomeScreen)
+
+    asyncio.run(_run())
+
+
+def test_menu_storage_opens_pvc_list() -> None:
+    app = RoomlampApp(_info(), cluster=FakeCluster(), enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            await pilot.press('m')
+            await pilot.pause()
+            menu = app.screen
+            assert isinstance(menu, MainMenuScreen)
+            menu.query_one('#menu-list', OptionList).highlighted = 2
+            await pilot.press('enter')
+            await pilot.pause()
+            picker = app.screen
+            assert isinstance(picker, KindPickerScreen)
+            kind_list = picker.query_one('#kind-list', OptionList)
+            labels = [str(kind_list.get_option_at_index(i).prompt) for i in range(kind_list.option_count)]
+            assert labels == [
+                'Persistent Volume Claims',
+                'Persistent Volumes',
+                'Storage Classes',
+            ]
+            await pilot.press('enter')
+            await pilot.pause()
+            screen = app.screen
+            assert isinstance(screen, StorageListScreen)
+            assert screen.kind == PVC
+            assert 'pick_namespace' in enabled_actions(screen)
+            assert 'show_menu' in enabled_actions(screen)
+            table = screen.query_one('#storage', DataTable)
+            assert table.row_count == 1
+            assert 'data' in table.get_row_at(0)
 
     asyncio.run(_run())

@@ -9,6 +9,7 @@ from roomlamp.k8s.auth import (
     resource_actions,
     review_access,
 )
+from roomlamp.k8s.storage import PV, PVC, STORAGE_CLASS
 from roomlamp.k8s.workloads import CRONJOB, DEPLOYMENT, JOB, POD_KIND
 
 
@@ -63,6 +64,16 @@ def test_api_resource_for_kind_matches_headlamp_api_names() -> None:
     assert (job.group, job.version, job.resource) == ('batch', 'v1', 'jobs')
     cron = api_resource_for_kind(CRONJOB)
     assert (cron.group, cron.version, cron.resource) == ('batch', 'v1', 'cronjobs')
+    pvc = api_resource_for_kind(PVC)
+    assert (pvc.group, pvc.version, pvc.resource) == ('', 'v1', 'persistentvolumeclaims')
+    pv = api_resource_for_kind(PV)
+    assert (pv.group, pv.version, pv.resource) == ('', 'v1', 'persistentvolumes')
+    storage_class = api_resource_for_kind(STORAGE_CLASS)
+    assert (storage_class.group, storage_class.version, storage_class.resource) == (
+        'storage.k8s.io',
+        'v1',
+        'storageclasses',
+    )
 
 
 def test_review_access_posts_self_subject_access_review() -> None:
@@ -107,6 +118,16 @@ def test_review_access_denies_on_false_invalid_verb_and_errors() -> None:
     unknown = FakeAuthApi()
     assert review_access(unknown, 'delete', 'ConfigMap', namespace='default', name='web') is False
     assert unknown.reviews == []
+
+
+def test_review_access_storage_class_is_cluster_scoped() -> None:
+    api = FakeAuthApi()
+    assert review_access(api, 'delete', STORAGE_CLASS, namespace='', name='standard') is True
+    attrs = api.reviews[0].spec.resource_attributes
+    assert attrs.group == 'storage.k8s.io'
+    assert attrs.resource == 'storageclasses'
+    assert attrs.namespace is None
+    assert attrs.name == 'standard'
 
 
 def test_resource_actions_uses_headlamp_authvisible_verbs() -> None:

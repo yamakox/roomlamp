@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from roomlamp.k8s.storage import STORAGE_KINDS, STORAGE_LABELS
 from roomlamp.k8s.workloads import KIND_LABELS, PICKER_KINDS
 
 
@@ -34,7 +35,11 @@ NAV_GROUPS: tuple[NavGroup, ...] = (
         'Workloads',
         tuple(NavKind(kind, KIND_LABELS[kind]) for kind in PICKER_KINDS),
     ),
-    NavGroup('storage', 'Storage', ()),
+    NavGroup(
+        'storage',
+        'Storage',
+        tuple(NavKind(kind, STORAGE_LABELS[kind]) for kind in STORAGE_KINDS),
+    ),
     NavGroup('network', 'Network', ()),
     NavGroup('gateway', 'Gateway', ()),
     NavGroup('security', 'Security', ()),

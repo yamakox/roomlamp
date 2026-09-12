@@ -11,11 +11,13 @@ from kubernetes.watch import Watch
 
 from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodSummary, summarize_pod
+from roomlamp.k8s.storage import ApiStorageReader, StorageSummary, summarize_storage
 from roomlamp.k8s.workloads import ApiWorkloadReader, WorkloadSummary, summarize_workload
 
 TKeyed = TypeVar('TKeyed', bound='HasKey')
 WatchCallback = Callable[[str, PodSummary], None]
 WorkloadWatchCallback = Callable[[str, WorkloadSummary], None]
+StorageWatchCallback = Callable[[str, StorageSummary], None]
 ErrorCallback = Callable[[str], None]
 Summarize = Callable[[object], TKeyed]
 
@@ -42,6 +44,17 @@ class WorkloadWatcher(Protocol):
         namespace: str,
         stop: threading.Event,
         on_event: WorkloadWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None: ...
+
+
+class StorageWatcher(Protocol):
+    def watch_storage(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: StorageWatchCallback,
         on_error: ErrorCallback,
     ) -> None: ...
 
@@ -84,6 +97,29 @@ class ApiWorkloadWatcher:
             args,
             stop,
             lambda raw: summarize_workload(kind, raw),
+            on_event,
+            on_error,
+        )
+
+
+class ApiStorageWatcher:
+    def __init__(self, api_client: ApiClient) -> None:
+        self._reader = ApiStorageReader(api_client)
+
+    def watch_storage(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: StorageWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None:
+        list_fn, args = self._reader.storage_list_call(kind, namespace)
+        watch_stream(
+            list_fn,
+            args,
+            stop,
+            lambda raw: summarize_storage(kind, raw),
             on_event,
             on_error,
         )

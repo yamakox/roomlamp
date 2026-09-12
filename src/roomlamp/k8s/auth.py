@@ -7,6 +7,7 @@ from typing import Any, Protocol
 
 from kubernetes.client import V1ResourceAttributes, V1SelfSubjectAccessReview, V1SelfSubjectAccessReviewSpec
 
+from roomlamp.k8s.storage import STORAGE_SPECS
 from roomlamp.k8s.workloads import KIND_SPECS, POD_KIND
 
 # https://kubernetes.io/docs/reference/access-authn-authz/authorization/#determine-the-request-verb
@@ -80,9 +81,12 @@ def api_resource_for_kind(kind: str) -> ApiResourceRef:
     if kind == POD_KIND:
         return ApiResourceRef('', 'v1', 'pods')
     spec = KIND_SPECS.get(kind)
-    if spec is None:
-        raise ValueError(f'unsupported kind: {kind}')
-    return ApiResourceRef(spec.group, 'v1', f'{kind.lower()}s')
+    if spec is not None:
+        return ApiResourceRef(spec.group, 'v1', f'{kind.lower()}s')
+    storage = STORAGE_SPECS.get(kind)
+    if storage is not None:
+        return ApiResourceRef(storage.group, storage.version, storage.resource)
+    raise ValueError(f'unsupported kind: {kind}')
 
 
 def has_access_checker(cluster: object) -> bool:

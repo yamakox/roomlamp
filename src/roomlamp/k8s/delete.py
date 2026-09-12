@@ -8,6 +8,7 @@ from typing import Any, Protocol
 from kubernetes.client import V1Eviction, V1ObjectMeta
 
 from roomlamp.k8s.resources import POD_API_VERSION
+from roomlamp.k8s.storage import STORAGE_SPECS
 from roomlamp.k8s.workloads import JOB, KIND_SPECS, POD_KIND
 
 ACTION_DELETE = 'delete'
@@ -55,9 +56,12 @@ def api_version_for_kind(kind: str) -> str:
     if kind == POD_KIND:
         return POD_API_VERSION
     spec = KIND_SPECS.get(kind)
-    if spec is None:
-        raise ValueError(f'unsupported kind: {kind}')
-    return f'{spec.group}/v1'
+    if spec is not None:
+        return f'{spec.group}/v1'
+    storage = STORAGE_SPECS.get(kind)
+    if storage is not None:
+        return storage.api_version
+    raise ValueError(f'unsupported kind: {kind}')
 
 
 def delete_params(kind: str, force: bool) -> dict[str, Any]:

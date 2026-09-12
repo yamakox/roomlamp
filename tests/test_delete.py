@@ -1,7 +1,7 @@
 import asyncio
 
 from kubernetes.client.exceptions import ApiException
-from textual.widgets import DataTable, OptionList
+from textual.widgets import DataTable, Label, OptionList
 
 from helpers import open_kind
 from roomlamp.app import RoomlampApp
@@ -9,7 +9,7 @@ from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.delete import ACTION_DELETE, ACTION_EVICT, DeletedObject
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodDetail, PodSummary
 from roomlamp.k8s.workloads import DEPLOYMENT, WorkloadDetail, WorkloadSummary
-from roomlamp.ui.screens.delete import DeleteConfirmScreen
+from roomlamp.ui.screens.delete import DeleteConfirmScreen, confirm_message
 from roomlamp.ui.screens.pod_detail import PodDetailScreen
 from roomlamp.ui.screens.pods import PodListScreen
 from roomlamp.ui.screens.workloads import WorkloadDetailScreen, WorkloadListScreen
@@ -109,6 +109,34 @@ def _info() -> ClusterInfo:
     )
 
 
+def test_confirm_message_is_one_line_for_namespaced_and_cluster_scoped() -> None:
+    assert confirm_message('PersistentVolumeClaim', 'my-www-claim-2', 'default') == (
+        'Are you sure you want to delete PersistentVolumeClaim default/my-www-claim-2?'
+    )
+    assert confirm_message('PersistentVolume', 'pv-www', None) == (
+        'Are you sure you want to delete PersistentVolume pv-www?'
+    )
+    assert confirm_message('PersistentVolume', 'pv-www', '') == (
+        'Are you sure you want to delete PersistentVolume pv-www?'
+    )
+
+
+def test_delete_confirm_wraps_long_prompt() -> None:
+    app = RoomlampApp(_info(), cluster=FakeCluster(), enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+            await app.push_screen(DeleteConfirmScreen('PersistentVolume', 'pv-www-2', None))
+            await pilot.pause()
+            prompt = app.screen.query_one('#delete-prompt', Label)
+            assert prompt.size.height >= 2
+            text = ''.join(prompt.render_line(y).text for y in range(prompt.size.height))
+            assert 'pv-www-2?' in text
+
+    asyncio.run(_run())
+
+
 def test_pod_detail_delete_confirms_then_pops_to_list() -> None:
     cluster = FakeCluster()
     app = RoomlampApp(_info(), cluster=cluster, enable_watch=False)
@@ -119,6 +147,8 @@ def test_pod_detail_delete_confirms_then_pops_to_list() -> None:
             app.screen.action_delete()
             await pilot.pause()
             assert isinstance(app.screen, DeleteConfirmScreen)
+            prompt = app.screen.query_one('#delete-prompt', Label)
+            assert str(prompt.content) == 'Are you sure you want to delete Pod default/web?'
             options = app.screen.query_one('#delete-list', OptionList)
             assert options.option_count == 3
             await pilot.press('enter')

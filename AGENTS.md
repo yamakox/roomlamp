@@ -129,7 +129,8 @@ This project uses the src layout. Add new modules under the target layout below 
       - `nodes.py` — Node list summaries and home snapshot
       - `metrics.py` — `metrics.k8s.io` node metrics and CPU/memory quantities
       - `workloads.py` — Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob
-      - `watch.py` — Pod and workload Watch streams
+      - `storage.py` — PersistentVolumeClaim, PersistentVolume, StorageClass
+      - `watch.py` — Pod, workload, and storage Watch streams
       - `dump.py` — read-only YAML for API objects
       - `logs.py` — Pod log snapshot and follow
       - `apply.py` — YAML/JSON apply (POST, then PUT on 409/403)
@@ -141,11 +142,11 @@ This project uses the src layout. Add new modules under the target layout below 
     - `nav.py` — sidebar groups for the main menu
     - `bindings.py` — shared `m` Menu / `h` Home bindings and stack helpers
     - `usage.py` — htop-style usage bars
-    - `screens/` — home, main menu, Pod list/detail, workload list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
+    - `screens/` — home, main menu, Pod list/detail, workload list/detail, storage list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
     - `widgets/` — reusable widgets (add when a second consumer needs one)
 - **`tests/`** — pytest suite (outside `src/`)
 - **`docs/`** — developer and user docs; reference specific files under `docs/` for workflows when they exist
-  - `docs/development/roadmap.md` — human-readable implementation process (phases 1–5). Update it when a phase starts or finishes. Commands in that file must match this document and `./pyproject.toml`.
+  - `docs/development/roadmap.md` — human-readable implementation process (phases 1–6). Update it when a phase starts or finishes. Commands in that file must match this document and `./pyproject.toml`.
   - `docs/manual/` — end-user usage. Keep it aligned with the current implementation stage. Put longer how-to text here; keep `/README.md` short and link to the manual.
 - **`/README.md`** — project overview and the public How to Use commands (`uvx roomlamp`, `uv tool install --from https://github.com/yamakox/roomlamp.git roomlamp`). Do not change those command blocks unless the user asks. The PyPI package name will be `roomlamp`. When user-visible behavior changes, update the README status blurb and `docs/manual/`.
 - **Project config (consult before changing or deleting):**
