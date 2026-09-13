@@ -58,7 +58,7 @@ class NavigationMixin:
         from roomlamp.ui.nav import group_by_id
         from roomlamp.ui.screens.kinds import KindPickerScreen
 
-        group = group_by_id(group_id)
+        group = group_by_id(group_id, getattr(self.app, 'cluster', None))
         if group is None or not group.implemented:
             return
         current = getattr(self, 'kind', None)

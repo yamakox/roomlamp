@@ -47,6 +47,9 @@ def test_api_version_for_kind_matches_workload_groups() -> None:
     assert api_version_for_kind('Endpoints') == 'v1'
     assert api_version_for_kind('EndpointSlice') == 'discovery.k8s.io/v1'
     assert api_version_for_kind('Ingress') == 'networking.k8s.io/v1'
+    assert api_version_for_kind('Gateway') == 'gateway.networking.k8s.io/v1'
+    assert api_version_for_kind('GatewayClass') == 'gateway.networking.k8s.io/v1'
+    assert api_version_for_kind('HTTPRoute') == 'gateway.networking.k8s.io/v1'
     try:
         api_version_for_kind('ConfigMap')
     except ValueError as exc:

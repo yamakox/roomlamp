@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from roomlamp.k8s.gateway import GATEWAY_LABELS
 from roomlamp.k8s.network import NETWORK_KINDS, NETWORK_LABELS
 from roomlamp.k8s.storage import STORAGE_KINDS, STORAGE_LABELS
 from roomlamp.k8s.workloads import KIND_LABELS, PICKER_KINDS
@@ -52,8 +53,27 @@ NAV_GROUPS: tuple[NavGroup, ...] = (
 )
 
 
-def group_by_id(group_id: str) -> NavGroup | None:
-    for group in NAV_GROUPS:
+def groups_for(cluster: object | None = None) -> tuple[NavGroup, ...]:
+    """Sidebar groups, with Gateway kinds filled in when the API serves them."""
+    gateway = _gateway_nav_kinds(cluster)
+    return tuple(
+        NavGroup(group.id, group.label, gateway if group.id == 'gateway' else group.kinds) for group in NAV_GROUPS
+    )
+
+
+def group_by_id(group_id: str, cluster: object | None = None) -> NavGroup | None:
+    for group in groups_for(cluster):
         if group.id == group_id:
             return group
     return None
+
+
+def _gateway_nav_kinds(cluster: object | None) -> tuple[NavKind, ...]:
+    lister = getattr(cluster, 'available_gateway_kinds', None)
+    if not callable(lister):
+        return ()
+    try:
+        kinds = lister()
+    except Exception:
+        return ()
+    return tuple(NavKind(kind, GATEWAY_LABELS[kind]) for kind in kinds if kind in GATEWAY_LABELS)
