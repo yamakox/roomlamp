@@ -10,7 +10,7 @@ from textual.widgets.option_list import Option
 
 from roomlamp.k8s.workloads import KIND_LABELS, PICKER_KINDS, POD_KIND
 from roomlamp.ui.nav import NavGroup, NavKind
-from roomlamp.ui.screens.menu import current_kind_index
+from roomlamp.ui.screens.menu import current_kind_index, with_back_option
 
 
 class KindPickerScreen(ModalScreen[str | None]):
@@ -28,7 +28,7 @@ class KindPickerScreen(ModalScreen[str | None]):
             options.append(Option(f'{item.label}{mark}', id=item.kind))
         yield Vertical(
             Label(f'Select {self.group.label}'),
-            OptionList(*options, id='kind-list'),
+            OptionList(*with_back_option(options), id='kind-list'),
             id='kind-dialog',
         )
 

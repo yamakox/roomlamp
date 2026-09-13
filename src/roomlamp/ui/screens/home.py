@@ -193,13 +193,6 @@ class HomeScreen(NavigationMixin, Screen[None]):
                 key=node.key,
             )
 
-    def _on_nav_kind(self, kind: str | None) -> None:
-        if kind is None:
-            return
-        from roomlamp.ui.bindings import open_kind
-
-        open_kind(self.app, kind, self.info.namespace or 'default')
-
     # Home is already current; keep the mixin method from popping.
     def action_show_home(self) -> None:
         return

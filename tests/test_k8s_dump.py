@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import yaml
 from kubernetes.client.models import (
     V1Container,
     V1ManagedFieldsEntry,
@@ -7,9 +8,18 @@ from kubernetes.client.models import (
     V1Pod,
     V1PodSpec,
     V1PodStatus,
+    V1Service,
+    V1ServiceSpec,
 )
 
 from roomlamp.k8s.dump import dump_resource
+
+LAST_APPLIED = (
+    '{"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},'
+    '"name":"metallb-webhook-service","namespace":"metallb-system"},'
+    '"spec":{"ports":[{"port":443,"targetPort":9443}],'
+    '"selector":{"component":"controller"}}}\n'
+)
 
 
 def test_dump_resource_hides_managed_fields_and_fills_gvk() -> None:
@@ -44,3 +54,19 @@ def test_dump_resource_can_keep_managed_fields() -> None:
     text = dump_resource(pod, kind='Pod', api_version='v1', hide_managed_fields=False)
     assert 'managedFields' in text
     assert 'kubectl' in text
+
+
+def test_dump_resource_folds_last_applied_configuration() -> None:
+    service = V1Service(
+        metadata=V1ObjectMeta(
+            name='metallb-webhook-service',
+            namespace='metallb-system',
+            annotations={'kubectl.kubernetes.io/last-applied-configuration': LAST_APPLIED},
+        ),
+        spec=V1ServiceSpec(cluster_ip='10.103.35.223'),
+    )
+    text = dump_resource(service, kind='Service', api_version='v1')
+    assert 'kubectl.kubernetes.io/last-applied-configuration: >' in text
+    assert "\n      '" not in text
+    loaded = yaml.safe_load(text)
+    assert loaded['metadata']['annotations']['kubectl.kubernetes.io/last-applied-configuration'] == LAST_APPLIED

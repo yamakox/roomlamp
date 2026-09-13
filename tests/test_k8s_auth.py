@@ -9,6 +9,7 @@ from roomlamp.k8s.auth import (
     resource_actions,
     review_access,
 )
+from roomlamp.k8s.network import ENDPOINT_SLICE, ENDPOINTS, INGRESS, SERVICE
 from roomlamp.k8s.storage import PV, PVC, STORAGE_CLASS
 from roomlamp.k8s.workloads import CRONJOB, DEPLOYMENT, JOB, POD_KIND
 
@@ -73,6 +74,22 @@ def test_api_resource_for_kind_matches_headlamp_api_names() -> None:
         'storage.k8s.io',
         'v1',
         'storageclasses',
+    )
+    service = api_resource_for_kind(SERVICE)
+    assert (service.group, service.version, service.resource) == ('', 'v1', 'services')
+    endpoints = api_resource_for_kind(ENDPOINTS)
+    assert (endpoints.group, endpoints.version, endpoints.resource) == ('', 'v1', 'endpoints')
+    endpoint_slice = api_resource_for_kind(ENDPOINT_SLICE)
+    assert (endpoint_slice.group, endpoint_slice.version, endpoint_slice.resource) == (
+        'discovery.k8s.io',
+        'v1',
+        'endpointslices',
+    )
+    ingress = api_resource_for_kind(INGRESS)
+    assert (ingress.group, ingress.version, ingress.resource) == (
+        'networking.k8s.io',
+        'v1',
+        'ingresses',
     )
 
 

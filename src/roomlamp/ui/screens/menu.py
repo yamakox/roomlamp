@@ -10,12 +10,19 @@ from textual.widgets.option_list import Option
 
 from roomlamp.ui.nav import NAV_GROUPS, NavGroup, group_by_id
 
+MENU_BACK = 'back'
+MENU_BACK_LABEL = 'Back'
+
+
+def with_back_option(options: list[Option]) -> list[Option]:
+    return [*options, Option(MENU_BACK_LABEL, id=MENU_BACK)]
+
 
 class MainMenuScreen(ModalScreen[str | None]):
     BINDINGS = [('escape', 'cancel', 'Cancel')]
 
     def compose(self) -> ComposeResult:
-        options = [Option(group.label, id=group.id) for group in NAV_GROUPS]
+        options = with_back_option([Option(group.label, id=group.id) for group in NAV_GROUPS])
         yield Vertical(
             Label('Select group'),
             OptionList(*options, id='menu-list'),
@@ -24,7 +31,7 @@ class MainMenuScreen(ModalScreen[str | None]):
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         option_id = event.option_id
-        if option_id is None:
+        if option_id is None or option_id == MENU_BACK:
             self.dismiss(None)
             return
         group = group_by_id(str(option_id))

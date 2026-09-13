@@ -1,4 +1,4 @@
-"""Watch Pod and workload events with the official client."""
+"""Watch Pod, workload, storage, and network events with the official client."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from kubernetes.client import ApiClient, CoreV1Api
 from kubernetes.watch import Watch
 
 from roomlamp.k8s.errors import api_error_message
+from roomlamp.k8s.network import ApiNetworkReader, NetworkSummary, summarize_network
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodSummary, summarize_pod
 from roomlamp.k8s.storage import ApiStorageReader, StorageSummary, summarize_storage
 from roomlamp.k8s.workloads import ApiWorkloadReader, WorkloadSummary, summarize_workload
@@ -18,6 +19,7 @@ TKeyed = TypeVar('TKeyed', bound='HasKey')
 WatchCallback = Callable[[str, PodSummary], None]
 WorkloadWatchCallback = Callable[[str, WorkloadSummary], None]
 StorageWatchCallback = Callable[[str, StorageSummary], None]
+NetworkWatchCallback = Callable[[str, NetworkSummary], None]
 ErrorCallback = Callable[[str], None]
 Summarize = Callable[[object], TKeyed]
 
@@ -59,6 +61,17 @@ class StorageWatcher(Protocol):
     ) -> None: ...
 
 
+class NetworkWatcher(Protocol):
+    def watch_network(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: NetworkWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None: ...
+
+
 class ApiPodWatcher:
     def __init__(self, api_client: ApiClient) -> None:
         self._core = CoreV1Api(api_client)
@@ -81,7 +94,7 @@ class ApiPodWatcher:
 
 class ApiWorkloadWatcher:
     def __init__(self, api_client: ApiClient) -> None:
-        self._reader = ApiWorkloadReader(api_client)
+        self._workload_reader = ApiWorkloadReader(api_client)
 
     def watch_workloads(
         self,
@@ -91,7 +104,7 @@ class ApiWorkloadWatcher:
         on_event: WorkloadWatchCallback,
         on_error: ErrorCallback,
     ) -> None:
-        list_fn, args = self._reader.list_call(kind, namespace)
+        list_fn, args = self._workload_reader.list_call(kind, namespace)
         watch_stream(
             list_fn,
             args,
@@ -104,7 +117,7 @@ class ApiWorkloadWatcher:
 
 class ApiStorageWatcher:
     def __init__(self, api_client: ApiClient) -> None:
-        self._reader = ApiStorageReader(api_client)
+        self._storage_reader = ApiStorageReader(api_client)
 
     def watch_storage(
         self,
@@ -114,12 +127,35 @@ class ApiStorageWatcher:
         on_event: StorageWatchCallback,
         on_error: ErrorCallback,
     ) -> None:
-        list_fn, args = self._reader.storage_list_call(kind, namespace)
+        list_fn, args = self._storage_reader.storage_list_call(kind, namespace)
         watch_stream(
             list_fn,
             args,
             stop,
             lambda raw: summarize_storage(kind, raw),
+            on_event,
+            on_error,
+        )
+
+
+class ApiNetworkWatcher:
+    def __init__(self, api_client: ApiClient) -> None:
+        self._network_reader = ApiNetworkReader(api_client)
+
+    def watch_network(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: NetworkWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None:
+        list_fn, args = self._network_reader.network_list_call(kind, namespace)
+        watch_stream(
+            list_fn,
+            args,
+            stop,
+            lambda raw: summarize_network(kind, raw),
             on_event,
             on_error,
         )

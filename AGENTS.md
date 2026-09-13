@@ -130,7 +130,8 @@ This project uses the src layout. Add new modules under the target layout below 
       - `metrics.py` — `metrics.k8s.io` node metrics and CPU/memory quantities
       - `workloads.py` — Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob
       - `storage.py` — PersistentVolumeClaim, PersistentVolume, StorageClass
-      - `watch.py` — Pod, workload, and storage Watch streams
+      - `network.py` — Service, Endpoints, EndpointSlice, Ingress
+      - `watch.py` — Pod, workload, storage, and network Watch streams
       - `dump.py` — read-only YAML for API objects
       - `logs.py` — Pod log snapshot and follow
       - `apply.py` — YAML/JSON apply (POST, then PUT on 409/403)
@@ -142,11 +143,11 @@ This project uses the src layout. Add new modules under the target layout below 
     - `nav.py` — sidebar groups for the main menu
     - `bindings.py` — shared `m` Menu / `h` Home bindings and stack helpers
     - `usage.py` — htop-style usage bars
-    - `screens/` — home, main menu, Pod list/detail, workload list/detail, storage list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
+    - `screens/` — home, main menu, Pod list/detail, workload list/detail, storage list/detail, network list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
     - `widgets/` — reusable widgets (add when a second consumer needs one)
 - **`tests/`** — pytest suite (outside `src/`)
 - **`docs/`** — developer and user docs; reference specific files under `docs/` for workflows when they exist
-  - `docs/development/roadmap.md` — human-readable implementation process (phases 1–6). Update it when a phase starts or finishes. Commands in that file must match this document and `./pyproject.toml`.
+  - `docs/development/roadmap.md` — human-readable implementation process (phases 1–7). Update it when a phase starts or finishes. Commands in that file must match this document and `./pyproject.toml`.
   - `docs/manual/` — end-user usage. Keep it aligned with the current implementation stage. Put longer how-to text here; keep `/README.md` short and link to the manual.
 - **`/README.md`** — project overview and the public How to Use commands (`uvx roomlamp`, `uv tool install --from https://github.com/yamakox/roomlamp.git roomlamp`). Do not change those command blocks unless the user asks. The PyPI package name will be `roomlamp`. When user-visible behavior changes, update the README status blurb and `docs/manual/`.
 - **Project config (consult before changing or deleting):**
@@ -253,7 +254,7 @@ When `docs/` later documents a command, prefer that documented command if it sti
   - **Refactoring:** Ensure behavior remains unchanged, validate with existing tests
   - **Performance:** Measure before and after when the change is performance-motivated
   - **Security:** Treat kubeconfig, tokens, and cluster credentials as secrets; never log them
-  - **Documentation:** Keep it concise, accurate, and consistent with actual uv commands. Keep `docs/development/roadmap.md` current so a human can follow the path from phase 1 through phase 5 without reading the chat history. Keep `/README.md` and `docs/manual/` current for end users: README stays short (install/run); the manual describes prerequisites, flags, keys, and what this stage can and cannot do.
+  - **Documentation:** Keep it concise, accurate, and consistent with actual uv commands. Keep `docs/development/roadmap.md` current so a human can follow the path from phase 1 through phase 7 without reading the chat history. Keep `/README.md` and `docs/manual/` current for end users: README stays short (install/run); the manual describes prerequisites, flags, keys, and what this stage can and cannot do.
 - **TUI-specific guidelines:**
   - Keep blocking Kubernetes I/O off the Textual event loop (`asyncio.to_thread` or `threading`)
   - Prefer keyboard-first workflows; document new key bindings
