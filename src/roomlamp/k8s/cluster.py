@@ -79,6 +79,12 @@ class ClusterAccess(
         self._auth_api: AuthorizationV1Api | None = None
         self._auth_cache: dict[tuple[str | None, ...], bool] = {}
 
+    def close(self) -> None:
+        """Release the shared API client. Safe to call more than once."""
+        closer = getattr(self._api_client, 'close', None)
+        if callable(closer):
+            closer()
+
     def apply_yaml(
         self,
         text: str,
@@ -152,11 +158,25 @@ class ClusterAccess(
         return self._dynamic
 
 
-def open_cluster(info: ClusterInfo) -> ClusterAccess | None:
+def build_cluster(info: ClusterInfo) -> ClusterAccess:
+    """Build live cluster access. Raises if kubeconfig or the client cannot load."""
     if not info.ok:
-        return None
+        raise RuntimeError(info.error or 'Could not load kubeconfig')
+    return ClusterAccess(build_api_client(info.kubeconfig, info.context_name))
+
+
+def open_cluster(info: ClusterInfo) -> ClusterAccess | None:
     try:
-        client = build_api_client(info.kubeconfig, info.context_name)
+        return build_cluster(info)
     except Exception:
         return None
-    return ClusterAccess(client)
+
+
+def close_cluster(cluster: object | None) -> None:
+    closer = getattr(cluster, 'close', None)
+    if not callable(closer):
+        return
+    try:
+        closer()
+    except Exception:
+        return

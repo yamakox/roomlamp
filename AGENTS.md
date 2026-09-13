@@ -145,9 +145,9 @@ This project uses the src layout. Add new modules under the target layout below 
       - `auth.py` — SelfSubjectAccessReview (Headlamp AuthVisible)
   - `ui/` — TUI (Headlamp frontend equivalent)
     - `nav.py` — sidebar groups for the main menu
-    - `bindings.py` — shared `m` Menu / `h` Home bindings and stack helpers
+    - `bindings.py` — shared `m` Menu / `c` Context / `h` Home bindings and stack helpers
     - `usage.py` — htop-style usage bars
-    - `screens/` — home, main menu, Pod list/detail, workload list/detail, storage list/detail, network list/detail, gateway list/detail, security list/detail, configuration list/detail, cluster catalog list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
+    - `screens/` — home, main menu, Pod list/detail, workload list/detail, storage list/detail, network list/detail, gateway list/detail, security list/detail, configuration list/detail, cluster catalog list/detail, namespace picker, context picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
     - `widgets/` — reusable widgets (add when a second consumer needs one)
 - **`tests/`** — pytest suite (outside `src/`)
 - **`docs/`** — developer and user docs; reference specific files under `docs/` for workflows when they exist

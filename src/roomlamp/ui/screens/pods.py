@@ -18,7 +18,7 @@ from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodSummary
 from roomlamp.k8s.watch import apply_watch_event
 from roomlamp.k8s.workloads import POD_KIND
-from roomlamp.ui.bindings import HOME_BINDING, MENU_BINDING, NavigationMixin
+from roomlamp.ui.bindings import CONTEXT_BINDING, HOME_BINDING, MENU_BINDING, NavigationMixin
 from roomlamp.ui.screens.delete import request_delete, selected_row_key
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.pod_detail import PodDetailScreen
@@ -55,6 +55,7 @@ def sort_pods(pods: list[PodSummary], column: int, ascending: bool) -> list[PodS
 class PodListScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
         MENU_BINDING,
+        CONTEXT_BINDING,
         HOME_BINDING,
         ('n', 'pick_namespace', 'Namespace'),
         ('d', 'delete', 'Delete'),

@@ -24,7 +24,7 @@ from roomlamp.k8s.security import (
     is_namespaced,
 )
 from roomlamp.k8s.watch import apply_watch_event
-from roomlamp.ui.bindings import HOME_BINDING, MENU_BINDING, NavigationMixin
+from roomlamp.ui.bindings import CONTEXT_BINDING, HOME_BINDING, MENU_BINDING, NavigationMixin
 from roomlamp.ui.screens.delete import request_delete, selected_row_key
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
@@ -46,6 +46,7 @@ def sort_security(items: list[SecuritySummary], column: int, ascending: bool) ->
 class SecurityListScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
         MENU_BINDING,
+        CONTEXT_BINDING,
         HOME_BINDING,
         ('n', 'pick_namespace', 'Namespace'),
         ('d', 'delete', 'Delete'),
@@ -299,6 +300,7 @@ class SecurityListScreen(NavigationMixin, Screen[None]):
 class SecurityDetailScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
         MENU_BINDING,
+        CONTEXT_BINDING,
         HOME_BINDING,
         ('y', 'show_yaml', 'YAML'),
         ('d', 'delete', 'Delete'),

@@ -84,6 +84,7 @@ Useful Headlamp files when adding features:
 - Cluster details: `frontend/src/components/namespace/Details.tsx`, `frontend/src/components/node/Details.tsx`
 - Cluster models: `frontend/src/lib/k8s/namespace.ts`, `node.ts`
 - Namespace type-to-confirm delete: `frontend/src/components/common/Resource/DeleteButton.tsx`
+- Cluster chooser (local kubeconfig contexts, not in-cluster OIDC): `frontend/src/components/cluster/Chooser.tsx`, `ClusterChooser.tsx`, `ClusterChooserPopup.tsx`
 
 ## Commands
 
@@ -503,11 +504,33 @@ tests/test_catalog.py
 
 **Not in this phase:** Advanced Search, the resource map, replacing the existing namespace picker, replacing the home Node table.
 
-### 12. Kubeconfig contexts — planned
+### 12. Kubeconfig contexts — done
 
 **Goal:** switch cluster context inside the TUI from kubeconfig, the same way kubectl uses contexts. This is not a Headlamp sidebar group; it replaces Headlamp's multi-cluster chooser for a local process.
 
-**Not in this phase:** plugins, charts, in-cluster OIDC web login.
+**What shipped:**
+
+- `c` Context on home, kind lists, and details. Pod logs keep `c` for container; exec and YAML omit `c`
+- The picker always opens, including when kubeconfig has a single context
+- Switching is in-process only: `load_kube_config(..., persist_config=False)`. The file's `current-context` is not rewritten
+- Choosing the current context shows `No changes to apply` and stays on the current screen
+- A successful switch pops to Home (list/detail `on_unmount` stops Watch), rebuilds `ClusterAccess`, and refreshes identity / overview
+- If the new client cannot be built, the previous context and screen stay, and an error toast is shown
+
+**Keys:** `c` context (home / list / detail). Logs still use `c` for container.
+
+**Layout:**
+
+```text
+src/roomlamp/ui/screens/contexts.py
+src/roomlamp/ui/bindings.py
+src/roomlamp/app.py
+src/roomlamp/k8s/cluster.py
+src/roomlamp/ui/screens/home.py
+tests/test_contexts.py
+```
+
+**Not in this phase:** plugins, charts, in-cluster OIDC web login, writing `current-context` back to kubeconfig.
 
 Custom Resources stay **Low** and have no phase until requested.
 
@@ -526,4 +549,4 @@ Custom Resources stay **Low** and have no phase until requested.
 | 9. Security | Done |
 | 10. Configuration | Done |
 | 11. Cluster catalog | Done |
-| 12. Kubeconfig contexts | Planned |
+| 12. Kubeconfig contexts | Done |
