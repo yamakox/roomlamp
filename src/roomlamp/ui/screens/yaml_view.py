@@ -32,6 +32,7 @@ class YamlViewScreen(Screen[None]):
         apply: ApplyFn | None = None,
         *,
         can_apply: bool = True,
+        on_applied: Callable[[], None] | None = None,
     ) -> None:
         super().__init__()
         self._title = title
@@ -39,6 +40,7 @@ class YamlViewScreen(Screen[None]):
         self._reload = reload
         self._apply = apply
         self._can_apply = can_apply and apply is not None
+        self._on_applied = on_applied
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action in {'apply', 'dry_run'} and not self._can_apply:
@@ -93,4 +95,6 @@ class YamlViewScreen(Screen[None]):
             return
         self._original = text
         self.notify(f'Applied {names}')
+        if self._on_applied is not None:
+            self._on_applied()
         self.app.pop_screen()

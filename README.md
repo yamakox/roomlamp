@@ -2,7 +2,7 @@
 
 Roomlamp is a Kubernetes TUI inspired by the core features of [Headlamp](https://headlamp.dev/).
 
-It is in early development. The current build starts on a cluster home (usage overview and a Node list), opens kinds from a main menu (Workloads, Storage, Network, and Gateway), and lists Pods, common workloads, PersistentVolumeClaims, PersistentVolumes, StorageClasses, Services, Endpoints, EndpointSlices, Ingresses, Gateways, GatewayClasses, and HTTPRoutes with Watch-backed tables, detail views, namespace switching (namespaced kinds), YAML edit/apply, Pod logs, Pod exec, and delete. Gateway kinds appear only when the cluster serves those CRDs. Actions the current kubeconfig user cannot perform are hidden.
+It is in early development. The current build starts on a cluster home (usage overview and a Node list), opens kinds from a main menu (Workloads, Storage, Network, Gateway, and Security), and lists Pods, common workloads, PersistentVolumeClaims, PersistentVolumes, StorageClasses, Services, Endpoints, EndpointSlices, Ingresses, Gateways, GatewayClasses, HTTPRoutes, ServiceAccounts, Roles (including ClusterRoles), and RoleBindings (including ClusterRoleBindings) with Watch-backed tables, detail views, namespace switching (namespaced kinds), YAML edit/apply, Pod logs, Pod exec, and delete. Gateway kinds appear only when the cluster serves those CRDs. Actions the current kubeconfig user cannot perform are hidden.
 
 ## How to Use
 

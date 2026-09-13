@@ -297,6 +297,7 @@ class NetworkDetailScreen(NavigationMixin, Screen[None]):
         HOME_BINDING,
         ('y', 'show_yaml', 'YAML'),
         ('d', 'delete', 'Delete'),
+        ('r', 'refresh', 'Refresh'),
         ('escape', 'app.pop_screen', 'Back'),
         ('backspace', 'app.pop_screen', 'Back'),
     ]
@@ -309,12 +310,15 @@ class NetworkDetailScreen(NavigationMixin, Screen[None]):
         self._auth = initial_actions(cluster, detail.kind)
 
     def on_mount(self) -> None:
+        self._set_subtitle()
+        if has_access_checker(self.cluster):
+            self.run_worker(self._load_auth, exclusive=True, group='auth')
+
+    def _set_subtitle(self) -> None:
         if self.detail.namespace:
             self.sub_title = f'{self.detail.kind} {self.detail.namespace}/{self.detail.name}'
         else:
             self.sub_title = f'{self.detail.kind} {self.detail.name}'
-        if has_access_checker(self.cluster):
-            self.run_worker(self._load_auth, exclusive=True, group='auth')
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == 'delete' and not self._auth.can_remove:
@@ -338,6 +342,24 @@ class NetworkDetailScreen(NavigationMixin, Screen[None]):
             id='network-detail-wrap',
         )
         yield Footer()
+
+    async def action_refresh(self) -> None:
+        await self._reload_detail()
+
+    async def _reload_detail(self) -> None:
+        try:
+            self.detail = await asyncio.to_thread(
+                self.cluster.get_network,
+                self.detail.kind,
+                self.detail.namespace,
+                self.detail.name,
+            )
+        except Exception as exc:
+            self.notify(api_error_message(exc), severity='error')
+            return
+        self.kind = self.detail.kind
+        self._set_subtitle()
+        self.query_one('#network-detail', Static).update(_detail_text(self.detail))
 
     async def action_show_yaml(self) -> None:
         try:
@@ -366,6 +388,7 @@ class NetworkDetailScreen(NavigationMixin, Screen[None]):
                     body, dry_run=dry_run, default_namespace=namespace or 'default'
                 ),
                 can_apply=self._auth.update,
+                on_applied=lambda: self.run_worker(self._reload_detail, exclusive=True, group='detail-load'),
             )
         )
 

@@ -9,6 +9,7 @@ from kubernetes.client import V1ResourceAttributes, V1SelfSubjectAccessReview, V
 
 from roomlamp.k8s.gateway import GATEWAY_SPECS
 from roomlamp.k8s.network import NETWORK_SPECS
+from roomlamp.k8s.security import SECURITY_SPECS
 from roomlamp.k8s.storage import STORAGE_SPECS
 from roomlamp.k8s.workloads import KIND_SPECS, POD_KIND
 
@@ -94,6 +95,9 @@ def api_resource_for_kind(kind: str) -> ApiResourceRef:
     gateway = GATEWAY_SPECS.get(kind)
     if gateway is not None:
         return ApiResourceRef(gateway.group, gateway.version, gateway.resource)
+    security = SECURITY_SPECS.get(kind)
+    if security is not None:
+        return ApiResourceRef(security.group, security.version, security.resource)
     raise ValueError(f'unsupported kind: {kind}')
 
 

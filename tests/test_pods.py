@@ -4,6 +4,7 @@ import time
 
 from helpers import open_kind
 from roomlamp.app import RoomlampApp
+from roomlamp.k8s.apply import AppliedObject
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodDetail, PodSummary
 from roomlamp.ui.screens.logs import PodLogsScreen
@@ -20,6 +21,7 @@ class FakeCluster:
             PodSummary('web', 'default', 'Running', '1/1', 0, 'node-a'),
             PodSummary('dns', 'kube-system', 'Running', '1/1', 1, 'node-b'),
         ]
+        self.pod_labels: dict[str, tuple[tuple[str, str], ...]] = {}
 
     def list_namespaces(self) -> list[str]:
         return ['default', 'kube-system']
@@ -40,7 +42,7 @@ class FakeCluster:
             restarts=0,
             node='node-a',
             pod_ip='10.1.0.5',
-            labels=(('app', name),),
+            labels=self.pod_labels.get(name, (('app', name),)),
             containers=(f'{name}: running',),
             container_names=('app',),
             default_container='app',
@@ -48,6 +50,11 @@ class FakeCluster:
 
     def get_pod_yaml(self, namespace: str, name: str, hide_managed_fields: bool = True) -> str:
         return f'apiVersion: v1\nkind: Pod\nmetadata:\n  name: {name}\n  namespace: {namespace}\n'
+
+    def apply_yaml(self, text: str, dry_run: bool = False, default_namespace: str = 'default'):
+        if not dry_run:
+            self.pod_labels['web'] = (('app', 'saved'),)
+        return [AppliedObject('Pod', 'web', default_namespace, dry_run)]
 
     def read_pod_logs(
         self,
@@ -192,6 +199,43 @@ def test_pod_yaml_and_logs_open_from_detail() -> None:
             assert isinstance(app.screen, PodLogsScreen)
             log = app.screen.query_one('#pod-logs', Log)
             assert any('hello from' in line for line in log.lines)
+
+    asyncio.run(_run())
+
+
+def test_pod_detail_refresh_and_yaml_apply_reloads() -> None:
+    cluster = FakeCluster()
+    app = RoomlampApp(_info(), cluster=cluster, enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test() as pilot:
+            await open_kind(app, pilot)
+            screen = app.screen
+            assert isinstance(screen, PodListScreen)
+            await screen._open_detail('default/web')
+            await pilot.pause()
+            detail = app.screen
+            assert isinstance(detail, PodDetailScreen)
+            text = str(detail.query_one('#pod-detail', Static).content)
+            assert 'app=web' in text
+            cluster.pod_labels['web'] = (('app', 'refreshed'),)
+            await detail.action_refresh()
+            await pilot.pause()
+            text = str(detail.query_one('#pod-detail', Static).content)
+            assert 'app=refreshed' in text
+            await detail.action_show_yaml()
+            await pilot.pause()
+            yaml_screen = app.screen
+            assert isinstance(yaml_screen, YamlViewScreen)
+            yaml_screen.query_one('#yaml-view', TextArea).load_text(
+                yaml_screen.query_one('#yaml-view', TextArea).text + '  labels:\n    app: saved\n'
+            )
+            await yaml_screen.action_apply()
+            await pilot.pause()
+            detail = app.screen
+            assert isinstance(detail, PodDetailScreen)
+            text = str(detail.query_one('#pod-detail', Static).content)
+            assert 'app=saved' in text
 
     asyncio.run(_run())
 

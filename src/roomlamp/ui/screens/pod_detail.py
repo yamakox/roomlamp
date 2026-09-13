@@ -29,6 +29,7 @@ class PodDetailScreen(NavigationMixin, Screen[None]):
         ('l', 'show_logs', 'Logs'),
         ('e', 'show_exec', 'Exec'),
         ('d', 'delete', 'Delete'),
+        ('r', 'refresh', 'Refresh'),
         ('escape', 'app.pop_screen', 'Back'),
         ('backspace', 'app.pop_screen', 'Back'),
     ]
@@ -42,9 +43,12 @@ class PodDetailScreen(NavigationMixin, Screen[None]):
         self._auth = initial_actions(cluster, POD_KIND)
 
     def on_mount(self) -> None:
-        self.sub_title = f'{self.detail.namespace}/{self.detail.name}'
+        self._set_subtitle()
         if has_access_checker(self.cluster):
             self.run_worker(self._load_auth, exclusive=True, group='auth')
+
+    def _set_subtitle(self) -> None:
+        self.sub_title = f'{self.detail.namespace}/{self.detail.name}'
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         hidden = {
@@ -71,6 +75,22 @@ class PodDetailScreen(NavigationMixin, Screen[None]):
         yield Vertical(Static(_detail_text(self.detail), id='pod-detail'), id='pod-detail-wrap')
         yield Footer()
 
+    async def action_refresh(self) -> None:
+        await self._reload_detail()
+
+    async def _reload_detail(self) -> None:
+        try:
+            self.detail = await asyncio.to_thread(
+                self.cluster.get_pod,
+                self.detail.namespace,
+                self.detail.name,
+            )
+        except Exception as exc:
+            self.notify(api_error_message(exc), severity='error')
+            return
+        self._set_subtitle()
+        self.query_one('#pod-detail', Static).update(_detail_text(self.detail))
+
     async def action_show_yaml(self) -> None:
         try:
             text = await asyncio.to_thread(
@@ -93,6 +113,7 @@ class PodDetailScreen(NavigationMixin, Screen[None]):
                     body, dry_run=dry_run, default_namespace=namespace
                 ),
                 can_apply=self._auth.update,
+                on_applied=lambda: self.run_worker(self._reload_detail, exclusive=True, group='detail-load'),
             )
         )
 

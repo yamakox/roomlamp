@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from roomlamp.k8s.gateway import GATEWAY_LABELS
 from roomlamp.k8s.network import NETWORK_KINDS, NETWORK_LABELS
+from roomlamp.k8s.security import SECURITY_KINDS, SECURITY_LABELS
 from roomlamp.k8s.storage import STORAGE_KINDS, STORAGE_LABELS
 from roomlamp.k8s.workloads import KIND_LABELS, PICKER_KINDS
 
@@ -48,7 +49,11 @@ NAV_GROUPS: tuple[NavGroup, ...] = (
         tuple(NavKind(kind, NETWORK_LABELS[kind]) for kind in NETWORK_KINDS),
     ),
     NavGroup('gateway', 'Gateway', ()),
-    NavGroup('security', 'Security', ()),
+    NavGroup(
+        'security',
+        'Security',
+        tuple(NavKind(kind, SECURITY_LABELS[kind]) for kind in SECURITY_KINDS),
+    ),
     NavGroup('configuration', 'Configuration', ()),
 )
 

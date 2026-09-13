@@ -74,6 +74,9 @@ Useful Headlamp files when adding features:
 - Gateway details: `frontend/src/components/gateway/GatewayDetails.tsx`, `ClassDetails.tsx`, `HTTPRouteDetails.tsx`
 - Gateway models: `frontend/src/lib/k8s/gateway.ts`, `gatewayClass.ts`, `httpRoute.ts`
 - Gateway L4 availability (later kinds): `frontend/src/lib/k8s/gatewayL4RouteAvailability.ts`
+- Security lists: `frontend/src/components/serviceaccount/List.tsx`, `role/List.tsx`, `role/BindingList.tsx`
+- Security details: `frontend/src/components/serviceaccount/Details.tsx`, `role/Details.tsx`, `role/BindingDetails.tsx`
+- Security models: `frontend/src/lib/k8s/serviceAccount.ts`, `role.ts`, `roleBinding.ts`
 
 ## Commands
 
@@ -223,7 +226,7 @@ tests/test_auth.py
 
 ## Later phases
 
-Phases 1–8 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, a two-level group menu, **Storage**, **Network**, and **Gateway**. From here, one Headlamp in-cluster sidebar group is one phase.
+Phases 1–9 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, a two-level group menu, **Storage**, **Network**, **Gateway**, and **Security**. From here, one Headlamp in-cluster sidebar group is one phase.
 
 Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse the list / detail / Watch / YAML / delete / RBAC path already shipped.
 
@@ -396,11 +399,36 @@ tests/test_gateway.py
 
 **Not in this phase:** installing Gateway CRDs.
 
-### 9. Security — planned
+### 9. Security — done
 
 **Goal:** ServiceAccount, Role, and RoleBinding (Headlamp Security subList).
 
-**Not in this phase:** ClusterRole / ClusterRoleBinding unless requested (they are not on Headlamp's Security subList). Token create/show UI.
+**What shipped:**
+
+- Core and rbac.authorization.k8s.io reads through the official client (`k8s/security.py`); Watch uses `_security_reader` so it does not collide with Workload / Storage / Network / Gateway mixins
+- TUI: Security group in the phase 5 menu opens ServiceAccount, Role, and RoleBinding. Core API, so kinds are listed statically (not via Gateway-style CRD discovery). No new footer keys
+- All three kinds are namespaced (`n` still switches namespace, including All namespaces)
+- List columns follow Headlamp plus `kubectl get` (kind, secrets count, role name, users / groups / service accounts). Role lists include ClusterRole; RoleBinding lists include ClusterRoleBinding. Cluster-scoped rows stay visible when a namespace is selected
+- Read-only detail with Headlamp extraInfo that maps cleanly (secrets and image pull secrets by name, automount, Role rules, RoleBinding roleRef and subjects). No related RoleBinding table on ServiceAccount detail and no token create/show UI
+- YAML / delete / RBAC reuse the phase 4 path. Role and RoleBinding SSAR uses `rbac.authorization.k8s.io` plurals (`roles`, `rolebindings`)
+
+**Keys:** `m` menu, `h` home, `n` namespace, `r` refresh, `y` YAML and `d` delete from detail (and `d` from the list).
+
+**Layout:**
+
+```text
+src/roomlamp/k8s/security.py
+src/roomlamp/ui/screens/security.py
+src/roomlamp/ui/nav.py
+src/roomlamp/k8s/watch.py
+src/roomlamp/k8s/cluster.py
+src/roomlamp/k8s/auth.py
+src/roomlamp/k8s/delete.py
+tests/test_k8s_security.py
+tests/test_security.py
+```
+
+**Not in this phase:** a separate ClusterRole / ClusterRoleBinding menu entry (they appear on the Roles / Role Bindings lists). Token create/show UI.
 
 ### 10. Configuration — planned
 
@@ -436,7 +464,7 @@ Custom Resources stay **Low** and have no phase until requested.
 | 6. Storage | Done |
 | 7. Network | Done |
 | 8. Gateway | Done |
-| 9. Security | Planned |
+| 9. Security | Done |
 | 10. Configuration | Planned |
 | 11. Cluster catalog | Planned |
 | 12. Kubeconfig contexts | Planned |
