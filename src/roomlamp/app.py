@@ -6,7 +6,10 @@ from typing import Any
 
 from textual.app import App
 
-from roomlamp.k8s.context import ClusterInfo
+from roomlamp.k8s.cluster import build_cluster, close_cluster
+from roomlamp.k8s.context import ClusterInfo, load_cluster_info
+from roomlamp.k8s.errors import api_error_message
+from roomlamp.ui.bindings import pop_to_home
 from roomlamp.ui.screens.home import HomeScreen
 
 
@@ -44,7 +47,7 @@ class RoomlampApp(App[None]):
         margin-bottom: 1;
     }
 
-    #namespace-dialog, #kind-dialog, #menu-dialog, #container-dialog, #delete-dialog {
+        #namespace-dialog, #kind-dialog, #menu-dialog, #container-dialog, #delete-dialog, #context-dialog {
         width: 60;
         height: auto;
         padding: 1 2;
@@ -87,3 +90,23 @@ class RoomlampApp(App[None]):
 
     def get_default_screen(self) -> HomeScreen:
         return HomeScreen(self.cluster_info, self.cluster, self.enable_watch)
+
+    def switch_context(self, name: str) -> None:
+        """Switch kubeconfig context in this process. Does not rewrite the file."""
+        current = self.cluster_info
+        if name == current.context_name:
+            self.notify('No changes to apply')
+            return
+        info = load_cluster_info(config_file=current.kubeconfig, context=name)
+        try:
+            cluster = build_cluster(info)
+        except Exception as exc:
+            self.notify(api_error_message(exc), severity='error')
+            return
+        pop_to_home(self)
+        old = self.cluster
+        self.cluster_info = info
+        self.cluster = cluster
+        if isinstance(self.screen, HomeScreen):
+            self.screen.apply_cluster(info, cluster)
+        close_cluster(old)

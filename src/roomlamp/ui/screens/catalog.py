@@ -25,7 +25,7 @@ from roomlamp.k8s.delete import DeletedObject
 from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.resources import ALL_NAMESPACES
 from roomlamp.k8s.watch import apply_watch_event
-from roomlamp.ui.bindings import HOME_BINDING, MENU_BINDING, NavigationMixin
+from roomlamp.ui.bindings import CONTEXT_BINDING, HOME_BINDING, MENU_BINDING, NavigationMixin
 from roomlamp.ui.screens.delete import request_delete, selected_row_key
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
@@ -47,6 +47,7 @@ def sort_catalog(items: list[CatalogSummary], column: int, ascending: bool) -> l
 class CatalogListScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
         MENU_BINDING,
+        CONTEXT_BINDING,
         HOME_BINDING,
         ('n', 'pick_namespace', 'Namespace'),
         ('d', 'delete', 'Delete'),
@@ -296,6 +297,7 @@ class CatalogListScreen(NavigationMixin, Screen[None]):
 class CatalogDetailScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
         MENU_BINDING,
+        CONTEXT_BINDING,
         HOME_BINDING,
         ('y', 'show_yaml', 'YAML'),
         ('d', 'delete', 'Delete'),

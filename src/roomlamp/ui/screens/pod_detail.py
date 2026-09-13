@@ -14,7 +14,7 @@ from roomlamp.k8s.auth import actions_for, has_access_checker, initial_actions
 from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.resources import PodDetail
 from roomlamp.k8s.workloads import POD_KIND
-from roomlamp.ui.bindings import HOME_BINDING, MENU_BINDING, NavigationMixin
+from roomlamp.ui.bindings import CONTEXT_BINDING, HOME_BINDING, MENU_BINDING, NavigationMixin
 from roomlamp.ui.screens.delete import request_delete
 from roomlamp.ui.screens.exec import PodExecScreen
 from roomlamp.ui.screens.logs import PodLogsScreen
@@ -24,6 +24,7 @@ from roomlamp.ui.screens.yaml_view import YamlViewScreen
 class PodDetailScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
         MENU_BINDING,
+        CONTEXT_BINDING,
         HOME_BINDING,
         ('y', 'show_yaml', 'YAML'),
         ('l', 'show_logs', 'Logs'),

@@ -14,7 +14,7 @@ from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.metrics import METRICS_FORBIDDEN, METRICS_NOT_FOUND, METRICS_OK
 from roomlamp.k8s.nodes import HomeSnapshot, NodeSummary
-from roomlamp.ui.bindings import MENU_BINDING, NavigationMixin
+from roomlamp.ui.bindings import CONTEXT_BINDING, MENU_BINDING, NavigationMixin
 from roomlamp.ui.usage import format_bar, format_cpu, format_memory
 
 OVERVIEW_INTERVAL_SECONDS = 60.0
@@ -49,6 +49,7 @@ class HomeScreen(NavigationMixin, Screen[None]):
 
     BINDINGS = [
         MENU_BINDING,
+        CONTEXT_BINDING,
         ('r', 'refresh', 'Refresh'),
     ]
 
@@ -63,6 +64,7 @@ class HomeScreen(NavigationMixin, Screen[None]):
         self.cluster = cluster
         self.enable_watch = enable_watch
         self._snapshot: HomeSnapshot | None = None
+        self._overview_timer = None
         self.sort_column = 0
         self.sort_ascending = True
 
@@ -73,10 +75,37 @@ class HomeScreen(NavigationMixin, Screen[None]):
 
     def on_mount(self) -> None:
         self.sub_title = self.info.context_name or 'no context'
+        self._sync_overview_timer()
         if self.cluster is not None and self.info.ok:
             self.action_refresh()
-            if self.enable_watch:
-                self.set_interval(OVERVIEW_INTERVAL_SECONDS, self.action_refresh)
+
+    def apply_cluster(self, info: ClusterInfo, cluster: Any) -> None:
+        """Replace identity and overview after an in-process context switch."""
+        self.info = info
+        self.cluster = cluster
+        self._snapshot = None
+        self.sub_title = info.context_name or 'no context'
+        self.query_one('#home-identity', Static).update(_identity(info))
+        if cluster is None or not info.ok:
+            self.query_one('#home-status', Static).update('')
+            self.query_one('#home-overview', Static).update('')
+            table = self.query_one('#nodes', DataTable)
+            if table.columns:
+                table.clear()
+            self._sync_overview_timer()
+            self.refresh_bindings()
+            return
+        self._sync_overview_timer()
+        self.refresh_bindings()
+        self.action_refresh()
+
+    def _sync_overview_timer(self) -> None:
+        want = self.enable_watch and self.cluster is not None and self.info.ok
+        if want and self._overview_timer is None:
+            self._overview_timer = self.set_interval(OVERVIEW_INTERVAL_SECONDS, self.action_refresh)
+        elif not want and self._overview_timer is not None:
+            self._overview_timer.stop()
+            self._overview_timer = None
 
     def compose(self) -> ComposeResult:
         table = DataTable(id='nodes', cursor_type='none', show_cursor=False)

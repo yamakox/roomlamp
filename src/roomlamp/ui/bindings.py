@@ -7,6 +7,7 @@ from typing import Any
 from textual.binding import Binding
 
 MENU_BINDING = Binding('m', 'show_menu', 'Menu')
+CONTEXT_BINDING = Binding('c', 'pick_context', 'Context')
 HOME_BINDING = Binding('h', 'show_home', 'Home')
 
 
@@ -39,7 +40,25 @@ def open_kind(app: Any, kind: str, namespace: str) -> None:
 
 
 class NavigationMixin:
-    """``m`` Menu and ``h`` Home for screens that sit above Home."""
+    """``m`` Menu, ``c`` Context, and ``h`` Home for screens that sit above Home."""
+
+    def action_pick_context(self) -> None:
+        from roomlamp.ui.screens.contexts import ContextScreen
+
+        info = getattr(self.app, 'cluster_info', None)  # type: ignore[attr-defined]
+        names = info.context_names if info is not None else ()
+        current = info.context_name if info is not None else None
+        self.app.push_screen(  # type: ignore[attr-defined]
+            ContextScreen(names, current),
+            callback=self._on_context,
+        )
+
+    def _on_context(self, name: str | None) -> None:
+        if name is None:
+            return
+        switch = getattr(self.app, 'switch_context', None)  # type: ignore[attr-defined]
+        if callable(switch):
+            switch(name)
 
     def action_show_menu(self) -> None:
         app = self.app  # type: ignore[attr-defined]

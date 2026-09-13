@@ -81,6 +81,7 @@ def test_home_shows_identity_overview_and_nodes() -> None:
             assert table.can_focus is False
             assert 'show_home' not in enabled_actions(app.screen)
             assert 'show_menu' in enabled_actions(app.screen)
+            assert 'pick_context' in enabled_actions(app.screen)
 
     asyncio.run(_run())
 
