@@ -9,6 +9,7 @@ from roomlamp.k8s.auth import (
     resource_actions,
     review_access,
 )
+from roomlamp.k8s.gateway import GATEWAY, GATEWAY_CLASS, HTTP_ROUTE
 from roomlamp.k8s.network import ENDPOINT_SLICE, ENDPOINTS, INGRESS, SERVICE
 from roomlamp.k8s.storage import PV, PVC, STORAGE_CLASS
 from roomlamp.k8s.workloads import CRONJOB, DEPLOYMENT, JOB, POD_KIND
@@ -90,6 +91,24 @@ def test_api_resource_for_kind_matches_headlamp_api_names() -> None:
         'networking.k8s.io',
         'v1',
         'ingresses',
+    )
+    gateway = api_resource_for_kind(GATEWAY)
+    assert (gateway.group, gateway.version, gateway.resource) == (
+        'gateway.networking.k8s.io',
+        'v1',
+        'gateways',
+    )
+    gateway_class = api_resource_for_kind(GATEWAY_CLASS)
+    assert (gateway_class.group, gateway_class.version, gateway_class.resource) == (
+        'gateway.networking.k8s.io',
+        'v1',
+        'gatewayclasses',
+    )
+    http_route = api_resource_for_kind(HTTP_ROUTE)
+    assert (http_route.group, http_route.version, http_route.resource) == (
+        'gateway.networking.k8s.io',
+        'v1',
+        'httproutes',
     )
 
 

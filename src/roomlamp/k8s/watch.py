@@ -1,4 +1,4 @@
-"""Watch Pod, workload, storage, and network events with the official client."""
+"""Watch Pod, workload, storage, network, and gateway events with the official client."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from kubernetes.client import ApiClient, CoreV1Api
 from kubernetes.watch import Watch
 
 from roomlamp.k8s.errors import api_error_message
+from roomlamp.k8s.gateway import ApiGatewayReader, GatewaySummary, summarize_gateway
 from roomlamp.k8s.network import ApiNetworkReader, NetworkSummary, summarize_network
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodSummary, summarize_pod
 from roomlamp.k8s.storage import ApiStorageReader, StorageSummary, summarize_storage
@@ -20,6 +21,7 @@ WatchCallback = Callable[[str, PodSummary], None]
 WorkloadWatchCallback = Callable[[str, WorkloadSummary], None]
 StorageWatchCallback = Callable[[str, StorageSummary], None]
 NetworkWatchCallback = Callable[[str, NetworkSummary], None]
+GatewayWatchCallback = Callable[[str, GatewaySummary], None]
 ErrorCallback = Callable[[str], None]
 Summarize = Callable[[object], TKeyed]
 
@@ -68,6 +70,17 @@ class NetworkWatcher(Protocol):
         namespace: str,
         stop: threading.Event,
         on_event: NetworkWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None: ...
+
+
+class GatewayWatcher(Protocol):
+    def watch_gateway(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: GatewayWatchCallback,
         on_error: ErrorCallback,
     ) -> None: ...
 
@@ -156,6 +169,29 @@ class ApiNetworkWatcher:
             args,
             stop,
             lambda raw: summarize_network(kind, raw),
+            on_event,
+            on_error,
+        )
+
+
+class ApiGatewayWatcher:
+    def __init__(self, api_client: ApiClient) -> None:
+        self._gateway_reader = ApiGatewayReader(api_client)
+
+    def watch_gateway(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: GatewayWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None:
+        list_fn, args = self._gateway_reader.gateway_list_call(kind, namespace)
+        watch_stream(
+            list_fn,
+            args,
+            stop,
+            lambda raw: summarize_gateway(kind, raw),
             on_event,
             on_error,
         )

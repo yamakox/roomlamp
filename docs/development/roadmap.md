@@ -70,6 +70,10 @@ Useful Headlamp files when adding features:
 - Network lists: `frontend/src/components/service/List.tsx`, `endpoints/List.tsx`, `endpointSlices/List.tsx`, `ingress/List.tsx`
 - Network details: `frontend/src/components/service/Details.tsx`, `endpoints/Details.tsx`, `endpointSlices/Details.tsx`, `ingress/Details.tsx`
 - Network models: `frontend/src/lib/k8s/service.ts`, `endpoints.ts`, `endpointSlices.ts`, `ingress.ts`
+- Gateway lists: `frontend/src/components/gateway/GatewayList.tsx`, `ClassList.tsx`, `HTTPRouteList.tsx`
+- Gateway details: `frontend/src/components/gateway/GatewayDetails.tsx`, `ClassDetails.tsx`, `HTTPRouteDetails.tsx`
+- Gateway models: `frontend/src/lib/k8s/gateway.ts`, `gatewayClass.ts`, `httpRoute.ts`
+- Gateway L4 availability (later kinds): `frontend/src/lib/k8s/gatewayL4RouteAvailability.ts`
 
 ## Commands
 
@@ -219,7 +223,7 @@ tests/test_auth.py
 
 ## Later phases
 
-Phases 1–7 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, a two-level group menu, **Storage**, and **Network**. From here, one Headlamp in-cluster sidebar group is one phase.
+Phases 1–8 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, a two-level group menu, **Storage**, **Network**, and **Gateway**. From here, one Headlamp in-cluster sidebar group is one phase.
 
 Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse the list / detail / Watch / YAML / delete / RBAC path already shipped.
 
@@ -359,11 +363,34 @@ tests/test_network.py
 
 **Not in this phase:** Port Forwarding (Headlamp hides it except in Electron). Gateway API belongs in phase 8.
 
-### 8. Gateway — planned
+### 8. Gateway — done
 
 **Goal:** Gateway API objects from Headlamp's Gateway (beta) group, when the cluster has those CRDs.
 
-**First increment:** Gateway, GatewayClass, and HTTPRoute. Hide kinds the API does not serve.
+**What shipped:**
+
+- `gateway.networking.k8s.io` reads through the official `CustomObjectsApi` (`k8s/gateway.py`); Watch uses `_gateway_reader` so it does not collide with Workload / Storage / Network mixins
+- TUI: Gateway group in the phase 5 menu opens Gateway, GatewayClass, and HTTPRoute when the API serves them. Kinds without `list` (CRDs not installed) stay hidden. If none are served, the group stays empty and the existing "No screens in this group yet" notify remains. No new footer keys
+- Gateway and HTTPRoute are namespaced (`n` still switches namespace, including All namespaces). GatewayClass is cluster-scoped (`n` hidden)
+- List columns follow Headlamp plus `kubectl get` (class, addresses, listener count, Accepted/Programmed conditions, controller, hostnames, parent refs, rule count)
+- Read-only detail with Headlamp extraInfo that maps cleanly (listener protocol/port/hostname and attached routes, addresses, conditions, HTTPRoute matches / backendRefs / filters)
+- YAML / delete / RBAC reuse the phase 4 path. SSAR uses `gateway.networking.k8s.io` plurals (`gateways`, `gatewayclasses`, `httproutes`). Prefer `v1`, then `v1beta1`
+
+**Keys:** `m` menu, `h` home, `n` namespace (Gateway and HTTPRoute lists only), `r` refresh, `y` YAML and `d` delete from detail (and `d` from the list).
+
+**Layout:**
+
+```text
+src/roomlamp/k8s/gateway.py
+src/roomlamp/ui/screens/gateway.py
+src/roomlamp/ui/nav.py
+src/roomlamp/k8s/watch.py
+src/roomlamp/k8s/cluster.py
+src/roomlamp/k8s/auth.py
+src/roomlamp/k8s/delete.py
+tests/test_k8s_gateway.py
+tests/test_gateway.py
+```
 
 **Low:** GRPCRoute, TCPRoute, UDPRoute, ReferenceGrant, BackendTLSPolicy, BackendTrafficPolicy.
 
@@ -408,7 +435,7 @@ Custom Resources stay **Low** and have no phase until requested.
 | 5. Home, metrics, and navigation | Done |
 | 6. Storage | Done |
 | 7. Network | Done |
-| 8. Gateway | Planned |
+| 8. Gateway | Done |
 | 9. Security | Planned |
 | 10. Configuration | Planned |
 | 11. Cluster catalog | Planned |

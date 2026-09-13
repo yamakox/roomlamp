@@ -34,7 +34,7 @@ class MainMenuScreen(ModalScreen[str | None]):
         if option_id is None or option_id == MENU_BACK:
             self.dismiss(None)
             return
-        group = group_by_id(str(option_id))
+        group = group_by_id(str(option_id), getattr(self.app, 'cluster', None))
         if group is None or not group.implemented:
             self.notify('No screens in this group yet')
             return
