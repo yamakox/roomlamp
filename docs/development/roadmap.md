@@ -67,6 +67,9 @@ Useful Headlamp files when adding features:
 - Storage lists: `frontend/src/components/storage/ClaimList.tsx`, `VolumeList.tsx`, `ClassList.tsx`
 - Storage details: `frontend/src/components/storage/ClaimDetails.tsx`, `VolumeDetails.tsx`, `ClassDetails.tsx`
 - Storage models: `frontend/src/lib/k8s/persistentVolumeClaim.ts`, `persistentVolume.ts`, `storageClass.ts`
+- Network lists: `frontend/src/components/service/List.tsx`, `endpoints/List.tsx`, `endpointSlices/List.tsx`, `ingress/List.tsx`
+- Network details: `frontend/src/components/service/Details.tsx`, `endpoints/Details.tsx`, `endpointSlices/Details.tsx`, `ingress/Details.tsx`
+- Network models: `frontend/src/lib/k8s/service.ts`, `endpoints.ts`, `endpointSlices.ts`, `ingress.ts`
 
 ## Commands
 
@@ -216,7 +219,7 @@ tests/test_auth.py
 
 ## Later phases
 
-Phases 1–6 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, a two-level group menu, and **Storage**. From here, one Headlamp in-cluster sidebar group is one phase.
+Phases 1–7 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, a two-level group menu, **Storage**, and **Network**. From here, one Headlamp in-cluster sidebar group is one phase.
 
 Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse the list / detail / Watch / YAML / delete / RBAC path already shipped.
 
@@ -235,7 +238,7 @@ Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse 
 - Node table under the overview (Headlamp `frontend/src/components/node/List.tsx` columns that fit a TUI): Name, CPU, Memory, Ready, Roles, Internal IP, Version, Age. Enter does **not** open Node detail
 - Metrics 404 (no Metrics Server): CPU / Memory unavailable; Pods / Nodes still from the core API. Metrics 403: hide metric bars and show a short error (fail closed)
 - Refresh: 60s poll + `r` (Headlamp overview does not Watch; the metrics API has no useful Watch)
-- Main menu (`m`): Cluster, Workloads, Storage, Network, Gateway, Security, Configuration. Submenu lists **implemented kinds only**. A group with no kinds is visible but not selectable (notify, stay on the menu). Workloads kinds are the current `PICKER_KINDS` (no JobSet / LeaderWorkerSet)
+- Main menu (`m`): Cluster, Workloads, Storage, Network, Gateway, Security, Configuration. Submenu lists **implemented kinds only**. A group with no kinds is visible but not selectable (notify, stay on the menu). Both lists end with Back (kinds return to groups; groups close the menu). Escape still closes the menu. Workloads kinds are the current `PICKER_KINDS` (no JobSet / LeaderWorkerSet)
 - Footer leftmost: `m` Menu, `h` Home (`h` hidden on home). Drop `w` / `p` / `c` from lists. Keep `n` on lists. YAML / logs / exec / delete keys stay as they are. Do not add `m` / `h` on exec
 - Screen stack: Home → list → detail → modals. Opening a kind pops back to Home then pushes the list. `h` pops until Home; it does not push another Home
 
@@ -323,9 +326,34 @@ tests/test_storage.py
 
 **Not in this phase:** CSI extras beyond Headlamp's Storage subList, snapshots, other sidebar groups.
 
-### 7. Network — planned
+### 7. Network — done
 
 **Goal:** Headlamp Network kinds. Start with Service. Then Endpoints and EndpointSlices (already used in this lab). Then Ingress.
+
+**What shipped:**
+
+- Core, discovery.k8s.io, and networking.k8s.io reads through the official client (`k8s/network.py`); Watch shares the existing watch loop (`k8s/watch.py`)
+- TUI: Network group in the phase 5 menu opens Service, Endpoints, EndpointSlice, and Ingress. No new footer keys
+- All four kinds are namespaced (`n` still switches namespace, including All namespaces)
+- List columns follow Headlamp plus `kubectl get` (type, cluster/external IP, ports, selector, addresses, address type, class, hosts)
+- Read-only detail with Headlamp extraInfo that maps cleanly (traffic policy, session affinity, subsets, slice conditions, Ingress rules/TLS). No Port Forwarding and no related-object tables on Service detail
+- YAML / delete / RBAC reuse the phase 4 path. EndpointSlice SSAR uses `discovery.k8s.io/endpointslices`; Ingress uses `networking.k8s.io/ingresses`
+
+**Keys:** `m` menu, `h` home, `n` namespace, `r` refresh, `y` YAML and `d` delete from detail (and `d` from the list).
+
+**Layout:**
+
+```text
+src/roomlamp/k8s/network.py
+src/roomlamp/ui/screens/network.py
+src/roomlamp/ui/nav.py
+src/roomlamp/k8s/watch.py
+src/roomlamp/k8s/cluster.py
+src/roomlamp/k8s/auth.py
+src/roomlamp/k8s/delete.py
+tests/test_k8s_network.py
+tests/test_network.py
+```
 
 **Low:** IngressClass, NetworkPolicy.
 
@@ -379,7 +407,7 @@ Custom Resources stay **Low** and have no phase until requested.
 | 4. Operator actions | Done |
 | 5. Home, metrics, and navigation | Done |
 | 6. Storage | Done |
-| 7. Network | Planned |
+| 7. Network | Done |
 | 8. Gateway | Planned |
 | 9. Security | Planned |
 | 10. Configuration | Planned |

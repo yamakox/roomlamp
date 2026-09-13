@@ -7,6 +7,23 @@ from typing import Any
 import yaml
 from kubernetes.client import ApiClient
 
+# js-yaml's default (Headlamp EditorDialog uses yaml.dump without lineWidth).
+# Long strings and strings with newlines become folded ``>`` blocks there.
+FOLD_WIDTH = 80
+
+
+class ResourceDumper(yaml.SafeDumper):
+    """Dump strings the way Headlamp's js-yaml dump does: ``>`` for long / multiline values."""
+
+
+def _represent_str(dumper: yaml.SafeDumper, data: str) -> yaml.Node:
+    if '\n' in data or len(data) > FOLD_WIDTH:
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='>')
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data)
+
+
+ResourceDumper.add_representer(str, _represent_str)
+
 
 def dump_resource(
     obj: object,
@@ -26,7 +43,13 @@ def dump_resource(
         metadata = data.get('metadata')
         if isinstance(metadata, dict):
             metadata.pop('managedFields', None)
-    return yaml.safe_dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    return yaml.dump(
+        data,
+        Dumper=ResourceDumper,
+        default_flow_style=False,
+        sort_keys=False,
+        allow_unicode=True,
+    )
 
 
 def _omit_nones(value: Any) -> Any:

@@ -70,6 +70,11 @@ class NavigationMixin:
     def _on_nav_kind(self, kind: str | None) -> None:
         if kind is None:
             return
+        from roomlamp.ui.screens.menu import MENU_BACK
+
+        if kind == MENU_BACK:
+            self.action_show_menu()
+            return
         info = getattr(self, 'info', None) or getattr(self.app, 'cluster_info', None)  # type: ignore[attr-defined]
         namespace = getattr(self, 'namespace', None) or (info.namespace if info else None) or 'default'
         open_kind(self.app, kind, namespace)  # type: ignore[attr-defined]

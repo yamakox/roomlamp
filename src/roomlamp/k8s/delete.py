@@ -7,6 +7,7 @@ from typing import Any, Protocol
 
 from kubernetes.client import V1Eviction, V1ObjectMeta
 
+from roomlamp.k8s.network import NETWORK_SPECS
 from roomlamp.k8s.resources import POD_API_VERSION
 from roomlamp.k8s.storage import STORAGE_SPECS
 from roomlamp.k8s.workloads import JOB, KIND_SPECS, POD_KIND
@@ -61,6 +62,9 @@ def api_version_for_kind(kind: str) -> str:
     storage = STORAGE_SPECS.get(kind)
     if storage is not None:
         return storage.api_version
+    network = NETWORK_SPECS.get(kind)
+    if network is not None:
+        return network.api_version
     raise ValueError(f'unsupported kind: {kind}')
 
 
