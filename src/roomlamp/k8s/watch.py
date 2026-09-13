@@ -1,4 +1,4 @@
-"""Watch Pod, workload, storage, network, gateway, security, and configuration events with the official client."""
+"""Watch Pod, workload, storage, network, gateway, security, configuration, and catalog events with the official client."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Protocol, TypeVar
 from kubernetes.client import ApiClient, CoreV1Api
 from kubernetes.watch import Watch
 
+from roomlamp.k8s.catalog import ApiCatalogReader, CatalogSummary, summarize_catalog
 from roomlamp.k8s.configuration import ApiConfigReader, ConfigurationSummary, summarize_configuration
 from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.gateway import ApiGatewayReader, GatewaySummary, summarize_gateway
@@ -32,6 +33,7 @@ NetworkWatchCallback = Callable[[str, NetworkSummary], None]
 GatewayWatchCallback = Callable[[str, GatewaySummary], None]
 SecurityWatchCallback = Callable[[str, SecuritySummary], None]
 ConfigurationWatchCallback = Callable[[str, ConfigurationSummary], None]
+CatalogWatchCallback = Callable[[str, CatalogSummary], None]
 ErrorCallback = Callable[[str], None]
 Summarize = Callable[[object], TKeyed]
 
@@ -113,6 +115,17 @@ class ConfigurationWatcher(Protocol):
         namespace: str,
         stop: threading.Event,
         on_event: ConfigurationWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None: ...
+
+
+class CatalogWatcher(Protocol):
+    def watch_catalog(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: CatalogWatchCallback,
         on_error: ErrorCallback,
     ) -> None: ...
 
@@ -292,6 +305,29 @@ class ApiConfigWatcher:
             args,
             stop,
             lambda raw: summarize_configuration(kind, raw),
+            on_event,
+            on_error,
+        )
+
+
+class ApiCatalogWatcher:
+    def __init__(self, api_client: ApiClient) -> None:
+        self._catalog_reader = ApiCatalogReader(api_client)
+
+    def watch_catalog(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: CatalogWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None:
+        list_fn, args = self._catalog_reader.catalog_list_call(kind, namespace)
+        watch_stream(
+            list_fn,
+            args,
+            stop,
+            lambda raw: summarize_catalog(kind, raw),
             on_event,
             on_error,
         )

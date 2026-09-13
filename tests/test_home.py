@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
+from textual.containers import VerticalScroll
 from textual.widgets import DataTable, Static
 
 from roomlamp.app import RoomlampApp
@@ -75,6 +76,9 @@ def test_home_shows_identity_overview_and_nodes() -> None:
             assert 'Yes' in row
             assert 'control-plane' in row
             assert '10.0.0.1' in row
+            assert table.cursor_type == 'none'
+            assert table.show_cursor is False
+            assert table.can_focus is False
             assert 'show_home' not in enabled_actions(app.screen)
             assert 'show_menu' in enabled_actions(app.screen)
 
@@ -114,6 +118,32 @@ def test_home_metrics_forbidden_hides_bars() -> None:
             assert 'Pods' in overview
             row = app.query_one('#nodes', DataTable).get_row_at(0)
             assert row[1] == '—'
+
+    asyncio.run(_run())
+
+
+def test_home_scrolls_when_content_is_taller_than_the_screen() -> None:
+    cluster = FakeCluster()
+    cluster.nodes = [
+        NodeSummary(f'node-{index}', True, 'worker', f'10.0.0.{index}', 'v1.34.0', '1d', CREATED, 4.0, 16 * GI)
+        for index in range(12)
+    ]
+    app = RoomlampApp(_info(), cluster=cluster, enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test(size=(80, 20)) as pilot:
+            await pilot.pause()
+            wrap = app.query_one('#home', VerticalScroll)
+            assert wrap.max_scroll_y > 0
+            wrap.scroll_end(animate=False)
+            await pilot.pause()
+            assert wrap.scroll_offset.y == wrap.max_scroll_y
+            table = app.query_one('#nodes', DataTable)
+            assert table.row_count == 12
+            names = [str(table.get_row_at(index)[0]) for index in range(table.row_count)]
+            assert names[0] == 'node-0'
+            assert names[-1] == 'node-9'
+            assert 'node-11' in names
 
     asyncio.run(_run())
 

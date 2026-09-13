@@ -1,4 +1,4 @@
-"""Workload list and read-only detail views."""
+"""Cluster catalog list and detail views for Namespace and Node."""
 
 from __future__ import annotations
 
@@ -12,28 +12,29 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
 from roomlamp.k8s.auth import ResourceActions, actions_for, has_access_checker, initial_actions
-from roomlamp.k8s.catalog import is_catalog_kind
-from roomlamp.k8s.configuration import is_configuration_kind
+from roomlamp.k8s.catalog import (
+    CLUSTER_LABELS,
+    CLUSTER_SPECS,
+    CatalogDetail,
+    CatalogSummary,
+    is_namespaced,
+    split_catalog_key,
+)
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.delete import DeletedObject
 from roomlamp.k8s.errors import api_error_message
-from roomlamp.k8s.gateway import is_gateway_kind
-from roomlamp.k8s.network import is_network_kind
 from roomlamp.k8s.resources import ALL_NAMESPACES
-from roomlamp.k8s.security import is_security_kind
-from roomlamp.k8s.storage import is_storage_kind
 from roomlamp.k8s.watch import apply_watch_event
-from roomlamp.k8s.workloads import KIND_LABELS, KIND_SPECS, POD_KIND, WorkloadDetail, WorkloadSummary
 from roomlamp.ui.bindings import HOME_BINDING, MENU_BINDING, NavigationMixin
 from roomlamp.ui.screens.delete import request_delete, selected_row_key
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
 
 
-def sort_workloads(items: list[WorkloadSummary], column: int, ascending: bool) -> list[WorkloadSummary]:
-    """Sort workload rows. ``column`` is an index into the kind's columns."""
+def sort_catalog(items: list[CatalogSummary], column: int, ascending: bool) -> list[CatalogSummary]:
+    """Sort catalog rows. ``column`` is an index into the kind's columns."""
 
-    def key(item: WorkloadSummary) -> tuple[object, ...]:
+    def key(item: CatalogSummary) -> tuple[object, ...]:
         keys = item.sort_keys
         if not keys:
             return (item.namespace, item.name)
@@ -43,54 +44,7 @@ def sort_workloads(items: list[WorkloadSummary], column: int, ascending: bool) -
     return sorted(items, key=key, reverse=not ascending)
 
 
-def show_kind_list(
-    app: Any,
-    info: ClusterInfo,
-    cluster: Any,
-    kind: str,
-    namespace: str,
-    enable_watch: bool,
-    *,
-    replace: bool,
-) -> None:
-    """Open Pods, a workload, Storage, Network, Gateway, Security, Configuration, or Cluster catalog kind list, replacing the current screen when asked."""
-    if kind == POD_KIND:
-        from roomlamp.ui.screens.pods import PodListScreen
-
-        screen: Screen[None] = PodListScreen(info, cluster, namespace, enable_watch)
-    elif is_catalog_kind(kind):
-        from roomlamp.ui.screens.catalog import CatalogListScreen
-
-        screen = CatalogListScreen(info, cluster, kind, namespace, enable_watch)
-    elif is_storage_kind(kind):
-        from roomlamp.ui.screens.storage import StorageListScreen
-
-        screen = StorageListScreen(info, cluster, kind, namespace, enable_watch)
-    elif is_network_kind(kind):
-        from roomlamp.ui.screens.network import NetworkListScreen
-
-        screen = NetworkListScreen(info, cluster, kind, namespace, enable_watch)
-    elif is_gateway_kind(kind):
-        from roomlamp.ui.screens.gateway import GatewayListScreen
-
-        screen = GatewayListScreen(info, cluster, kind, namespace, enable_watch)
-    elif is_security_kind(kind):
-        from roomlamp.ui.screens.security import SecurityListScreen
-
-        screen = SecurityListScreen(info, cluster, kind, namespace, enable_watch)
-    elif is_configuration_kind(kind):
-        from roomlamp.ui.screens.configuration import ConfigurationListScreen
-
-        screen = ConfigurationListScreen(info, cluster, kind, namespace, enable_watch)
-    else:
-        screen = WorkloadListScreen(info, cluster, kind, namespace, enable_watch)
-    if replace:
-        app.switch_screen(screen)
-    else:
-        app.push_screen(screen)
-
-
-class WorkloadListScreen(NavigationMixin, Screen[None]):
+class CatalogListScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
         MENU_BINDING,
         HOME_BINDING,
@@ -114,7 +68,7 @@ class WorkloadListScreen(NavigationMixin, Screen[None]):
         self.namespace = namespace
         self.enable_watch = enable_watch
         self._namespaces: list[str] = []
-        self._items: dict[str, WorkloadSummary] = {}
+        self._items: dict[str, CatalogSummary] = {}
         self.sort_column = 0
         self.sort_ascending = True
         self._watch_stop: threading.Event | None = None
@@ -125,7 +79,7 @@ class WorkloadListScreen(NavigationMixin, Screen[None]):
     def on_mount(self) -> None:
         self._set_subtitle()
         if self.enable_watch:
-            self.run_worker(self._load_initial, exclusive=True, group='workloads-load')
+            self.run_worker(self._load_initial, exclusive=True, group='catalog-load')
         else:
             self._load_sync()
 
@@ -135,9 +89,9 @@ class WorkloadListScreen(NavigationMixin, Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Vertical(
-            Static('', id='workloads-status'),
-            DataTable(id='workloads', cursor_type='row'),
-            id='workloads-wrap',
+            Static('', id='catalog-status'),
+            DataTable(id='catalog', cursor_type='row'),
+            id='catalog-wrap',
         )
         yield Footer()
 
@@ -153,18 +107,22 @@ class WorkloadListScreen(NavigationMixin, Screen[None]):
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         key = str(event.row_key.value) if event.row_key is not None else ''
         if key:
-            self.run_worker(self._open_detail(key), exclusive=True, group='workload-detail')
+            self.run_worker(self._open_detail(key), exclusive=True, group='catalog-detail')
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         key = str(event.row_key.value) if event.row_key is not None else None
         self._queue_auth(key)
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        if action == 'pick_namespace' and not is_namespaced(self.kind):
+            return False
         if action == 'delete' and not self._auth.can_remove:
             return False
         return True
 
     def action_pick_namespace(self) -> None:
+        if not is_namespaced(self.kind):
+            return
         self.app.push_screen(
             NamespaceScreen(self._namespaces, self.namespace),
             callback=self._on_namespace_chosen,
@@ -176,7 +134,7 @@ class WorkloadListScreen(NavigationMixin, Screen[None]):
         self.namespace = chosen
         self._stop_watch()
         if self.enable_watch:
-            self.run_worker(self._load_initial, exclusive=True, group='workloads-load')
+            self.run_worker(self._load_initial, exclusive=True, group='catalog-load')
         else:
             self._load_sync()
 
@@ -193,24 +151,28 @@ class WorkloadListScreen(NavigationMixin, Screen[None]):
             self._load_sync()
 
     def action_delete(self) -> None:
-        key = selected_row_key(self.query_one('#workloads', DataTable))
+        key = selected_row_key(self.query_one('#catalog', DataTable))
         if not key:
             return
-        namespace, name = key.split('/', 1)
+        namespace, name = split_catalog_key(self.kind, key)
+        item = self._items.get(key)
         request_delete(
             self,
             self.cluster,
             self.kind,
             name,
-            namespace,
+            namespace or None,
             allow_delete=self._auth.delete,
+            require_typed_name=item.confirm_name if item is not None else None,
             on_success=self._on_deleted,
         )
 
     def _on_deleted(self, deleted: DeletedObject) -> None:
         if deleted.namespace:
             self._items.pop(f'{deleted.namespace}/{deleted.name}', None)
-            self._render_table()
+        else:
+            self._items.pop(deleted.name, None)
+        self._render_table()
 
     def _load_sync(self) -> None:
         try:
@@ -230,53 +192,55 @@ class WorkloadListScreen(NavigationMixin, Screen[None]):
         if self.enable_watch:
             self._start_watch()
 
-    def _fetch(self) -> tuple[list[str], list[WorkloadSummary]]:
-        try:
-            namespaces = self.cluster.list_namespaces()
-        except Exception:
-            namespaces = [self.namespace] if self.namespace != ALL_NAMESPACES else []
-        items = self.cluster.list_workloads(self.kind, self.namespace)
+    def _fetch(self) -> tuple[list[str], list[CatalogSummary]]:
+        namespaces: list[str] = []
+        if is_namespaced(self.kind):
+            try:
+                namespaces = self.cluster.list_namespaces()
+            except Exception:
+                namespaces = [self.namespace] if self.namespace != ALL_NAMESPACES else []
+        items = self.cluster.list_catalog(self.kind, self.namespace)
         return namespaces, items
 
-    def _apply_list(self, namespaces: list[str], items: list[WorkloadSummary]) -> None:
+    def _apply_list(self, namespaces: list[str], items: list[CatalogSummary]) -> None:
         self._namespaces = namespaces
         self._items = {item.key: item for item in items}
         self._render_table()
         self._set_subtitle()
-        key = selected_row_key(self.query_one('#workloads', DataTable))
+        key = selected_row_key(self.query_one('#catalog', DataTable))
         self._queue_auth(key)
 
-    def _apply_event(self, event_type: str, item: WorkloadSummary) -> None:
+    def _apply_event(self, event_type: str, item: CatalogSummary) -> None:
         self._items = apply_watch_event(self._items, event_type, item)
         self._render_table()
 
     def _render_table(self) -> None:
-        table = self.query_one('#workloads', DataTable)
-        columns = KIND_SPECS[self.kind].columns
+        table = self.query_one('#catalog', DataTable)
+        columns = CLUSTER_SPECS[self.kind].columns
         if not table.columns:
             table.add_columns(*columns)
         table.clear()
-        for item in sort_workloads(list(self._items.values()), self.sort_column, self.sort_ascending):
+        for item in sort_catalog(list(self._items.values()), self.sort_column, self.sort_ascending):
             table.add_row(*item.cells, key=item.key)
 
     async def _open_detail(self, key: str) -> None:
-        namespace, name = key.split('/', 1)
+        namespace, name = split_catalog_key(self.kind, key)
         try:
-            detail = await asyncio.to_thread(self.cluster.get_workload, self.kind, namespace, name)
+            detail = await asyncio.to_thread(self.cluster.get_catalog, self.kind, namespace, name)
         except Exception as exc:
             self._set_status(api_error_message(exc))
             return
-        await self.app.push_screen(WorkloadDetailScreen(detail, self.cluster))
+        await self.app.push_screen(CatalogDetailScreen(detail, self.cluster))
 
     def _start_watch(self) -> None:
-        if not hasattr(self.cluster, 'watch_workloads'):
+        if not hasattr(self.cluster, 'watch_catalog'):
             return
         self._stop_watch()
         stop = threading.Event()
         self._watch_stop = stop
 
         def _run() -> None:
-            self.cluster.watch_workloads(
+            self.cluster.watch_catalog(
                 self.kind,
                 self.namespace,
                 stop,
@@ -309,7 +273,7 @@ class WorkloadListScreen(NavigationMixin, Screen[None]):
         self.run_worker(self._load_row_auth(key), exclusive=True, group='auth')
 
     async def _load_row_auth(self, key: str) -> None:
-        namespace, name = key.split('/', 1)
+        namespace, name = split_catalog_key(self.kind, key)
         auth = await asyncio.to_thread(actions_for, self.cluster, self.kind, namespace, name)
         if self._auth_key != key:
             return
@@ -317,15 +281,19 @@ class WorkloadListScreen(NavigationMixin, Screen[None]):
         self.refresh_bindings()
 
     def _set_status(self, message: str) -> None:
-        self.query_one('#workloads-status', Static).update(message)
+        self.query_one('#catalog-status', Static).update(message)
 
     def _set_subtitle(self) -> None:
         context = self.info.context_name or 'no context'
+        label = CLUSTER_LABELS[self.kind]
+        if not is_namespaced(self.kind):
+            self.sub_title = f'{context} / {label}'
+            return
         namespace = ALL_LABEL if self.namespace == ALL_NAMESPACES else self.namespace
-        self.sub_title = f'{context} / {namespace} / {KIND_LABELS[self.kind]}'
+        self.sub_title = f'{context} / {namespace} / {label}'
 
 
-class WorkloadDetailScreen(NavigationMixin, Screen[None]):
+class CatalogDetailScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
         MENU_BINDING,
         HOME_BINDING,
@@ -336,7 +304,7 @@ class WorkloadDetailScreen(NavigationMixin, Screen[None]):
         ('backspace', 'app.pop_screen', 'Back'),
     ]
 
-    def __init__(self, detail: WorkloadDetail, cluster: Any) -> None:
+    def __init__(self, detail: CatalogDetail, cluster: Any) -> None:
         super().__init__()
         self.detail = detail
         self.cluster = cluster
@@ -349,7 +317,10 @@ class WorkloadDetailScreen(NavigationMixin, Screen[None]):
             self.run_worker(self._load_auth, exclusive=True, group='auth')
 
     def _set_subtitle(self) -> None:
-        self.sub_title = f'{self.detail.kind} {self.detail.namespace}/{self.detail.name}'
+        if self.detail.namespace:
+            self.sub_title = f'{self.detail.kind} {self.detail.namespace}/{self.detail.name}'
+        else:
+            self.sub_title = f'{self.detail.kind} {self.detail.name}'
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == 'delete' and not self._auth.can_remove:
@@ -369,8 +340,8 @@ class WorkloadDetailScreen(NavigationMixin, Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield VerticalScroll(
-            Static(_detail_text(self.detail), id='workload-detail'),
-            id='workload-detail-wrap',
+            Static(_detail_text(self.detail), id='catalog-detail'),
+            id='catalog-detail-wrap',
         )
         yield Footer()
 
@@ -380,7 +351,7 @@ class WorkloadDetailScreen(NavigationMixin, Screen[None]):
     async def _reload_detail(self) -> None:
         try:
             self.detail = await asyncio.to_thread(
-                self.cluster.get_workload,
+                self.cluster.get_catalog,
                 self.detail.kind,
                 self.detail.namespace,
                 self.detail.name,
@@ -390,12 +361,12 @@ class WorkloadDetailScreen(NavigationMixin, Screen[None]):
             return
         self.kind = self.detail.kind
         self._set_subtitle()
-        self.query_one('#workload-detail', Static).update(_detail_text(self.detail))
+        self.query_one('#catalog-detail', Static).update(_detail_text(self.detail))
 
     async def action_show_yaml(self) -> None:
         try:
             text = await asyncio.to_thread(
-                self.cluster.get_workload_yaml,
+                self.cluster.get_catalog_yaml,
                 self.detail.kind,
                 self.detail.namespace,
                 self.detail.name,
@@ -403,7 +374,10 @@ class WorkloadDetailScreen(NavigationMixin, Screen[None]):
         except Exception as exc:
             self.notify(api_error_message(exc), severity='error')
             return
-        title = f'{self.detail.kind} {self.detail.namespace}/{self.detail.name}'
+        if self.detail.namespace:
+            title = f'{self.detail.kind} {self.detail.namespace}/{self.detail.name}'
+        else:
+            title = f'{self.detail.kind} {self.detail.name}'
         kind = self.detail.kind
         namespace = self.detail.namespace
         name = self.detail.name
@@ -411,9 +385,9 @@ class WorkloadDetailScreen(NavigationMixin, Screen[None]):
             YamlViewScreen(
                 title,
                 text,
-                reload=lambda: self.cluster.get_workload_yaml(kind, namespace, name),
+                reload=lambda: self.cluster.get_catalog_yaml(kind, namespace, name),
                 apply=lambda body, dry_run=False: self.cluster.apply_yaml(
-                    body, dry_run=dry_run, default_namespace=namespace
+                    body, dry_run=dry_run, default_namespace=namespace or 'default'
                 ),
                 can_apply=self._auth.update,
                 on_applied=lambda: self.run_worker(self._reload_detail, exclusive=True, group='detail-load'),
@@ -426,24 +400,23 @@ class WorkloadDetailScreen(NavigationMixin, Screen[None]):
             self.cluster,
             self.detail.kind,
             self.detail.name,
-            self.detail.namespace,
+            self.detail.namespace or None,
             allow_delete=self._auth.delete,
+            require_typed_name=self.detail.confirm_name,
             on_success=lambda _deleted: self.app.pop_screen(),
         )
 
 
-def _detail_text(detail: WorkloadDetail) -> str:
+def _detail_text(detail: CatalogDetail) -> str:
     labels = ', '.join(f'{key}={value}' for key, value in detail.labels) or '(none)'
-    containers = '\n'.join(f'  - {line}' for line in detail.containers) or '  (none)'
     rows = [
         ('Kind', detail.kind),
         ('Name', detail.name),
-        ('Namespace', detail.namespace),
+        *([('Namespace', detail.namespace)] if detail.namespace else []),
         ('UID', detail.uid or '(none)'),
         ('Created', detail.created or '(none)'),
         *detail.fields,
         ('Labels', labels),
     ]
     width = max(len(name) for name, _ in rows)
-    body = '\n'.join(f'{name + ":":<{width + 1}} {value}' for name, value in rows)
-    return f'{body}\n\nContainers:\n{containers}'
+    return '\n'.join(f'{name + ":":<{width + 1}} {value}' for name, value in rows)

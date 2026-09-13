@@ -11,6 +11,7 @@ from roomlamp.k8s.auth import (
 )
 from roomlamp.k8s.gateway import GATEWAY, GATEWAY_CLASS, HTTP_ROUTE
 from roomlamp.k8s.network import ENDPOINT_SLICE, ENDPOINTS, INGRESS, SERVICE
+from roomlamp.k8s.catalog import NAMESPACE, NODE
 from roomlamp.k8s.configuration import CONFIG_MAP, SECRET
 from roomlamp.k8s.security import CLUSTER_ROLE, CLUSTER_ROLE_BINDING, ROLE, ROLE_BINDING, SERVICE_ACCOUNT
 from roomlamp.k8s.storage import PV, PVC, STORAGE_CLASS
@@ -142,6 +143,10 @@ def test_api_resource_for_kind_matches_headlamp_api_names() -> None:
     assert (config_map.group, config_map.version, config_map.resource) == ('', 'v1', 'configmaps')
     secret = api_resource_for_kind(SECRET)
     assert (secret.group, secret.version, secret.resource) == ('', 'v1', 'secrets')
+    namespace = api_resource_for_kind(NAMESPACE)
+    assert (namespace.group, namespace.version, namespace.resource) == ('', 'v1', 'namespaces')
+    node = api_resource_for_kind(NODE)
+    assert (node.group, node.version, node.resource) == ('', 'v1', 'nodes')
 
 
 def test_review_access_posts_self_subject_access_review() -> None:
