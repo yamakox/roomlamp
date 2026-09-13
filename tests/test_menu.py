@@ -7,6 +7,7 @@ from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.metrics import NodeMetricsResult
 from roomlamp.k8s.nodes import HomeSnapshot, build_home_snapshot
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodDetail, PodSummary
+from roomlamp.k8s.configuration import CONFIG_MAP, ConfigurationSummary
 from roomlamp.k8s.network import SERVICE, NetworkSummary
 from roomlamp.k8s.security import SERVICE_ACCOUNT, SecuritySummary
 from roomlamp.k8s.storage import PVC, StorageSummary
@@ -15,6 +16,7 @@ from roomlamp.ui.nav import NAV_GROUPS
 from roomlamp.ui.screens.home import HomeScreen
 from roomlamp.ui.screens.kinds import KindPickerScreen
 from roomlamp.ui.screens.menu import MainMenuScreen
+from roomlamp.ui.screens.configuration import ConfigurationListScreen
 from roomlamp.ui.screens.network import NetworkListScreen
 from roomlamp.ui.screens.pods import PodListScreen
 from roomlamp.ui.screens.security import SecurityListScreen
@@ -87,6 +89,18 @@ class FakeCluster:
             )
         ]
 
+    def list_configuration(self, kind: str, namespace: str) -> list[ConfigurationSummary]:
+        return [
+            ConfigurationSummary(
+                kind=CONFIG_MAP,
+                name='app-config',
+                namespace='default',
+                created=None,
+                cells=('default', 'app-config', '2', '1d'),
+                sort_keys=('default', 'app-config', 2, 1.0),
+            )
+        ]
+
 
 def _info() -> ClusterInfo:
     return ClusterInfo(
@@ -103,7 +117,7 @@ def enabled_actions(screen) -> set[str]:
     return {info.binding.action for info in screen.active_bindings.values() if info.enabled}
 
 
-def test_nav_groups_workloads_storage_network_and_security_implemented() -> None:
+def test_nav_groups_workloads_storage_network_security_and_configuration_implemented() -> None:
     labels = [group.label for group in NAV_GROUPS]
     assert labels == [
         'Cluster',
@@ -115,7 +129,7 @@ def test_nav_groups_workloads_storage_network_and_security_implemented() -> None
         'Configuration',
     ]
     implemented = [group.id for group in NAV_GROUPS if group.implemented]
-    assert implemented == ['workloads', 'storage', 'network', 'security']
+    assert implemented == ['workloads', 'storage', 'network', 'security', 'configuration']
     kinds = next(group.kinds for group in NAV_GROUPS if group.id == 'workloads')
     assert kinds[0].kind == POD_KIND
     storage = next(group.kinds for group in NAV_GROUPS if group.id == 'storage')
@@ -124,6 +138,8 @@ def test_nav_groups_workloads_storage_network_and_security_implemented() -> None
     assert [item.kind for item in network] == ['Service', 'Endpoints', 'EndpointSlice', 'Ingress']
     security = next(group.kinds for group in NAV_GROUPS if group.id == 'security')
     assert [item.kind for item in security] == ['ServiceAccount', 'Role', 'RoleBinding']
+    configuration = next(group.kinds for group in NAV_GROUPS if group.id == 'configuration')
+    assert [item.kind for item in configuration] == ['ConfigMap', 'Secret']
 
 
 def test_menu_empty_group_stays_open() -> None:
@@ -300,6 +316,42 @@ def test_menu_security_opens_service_account_list() -> None:
             table = screen.query_one('#security', DataTable)
             assert table.row_count == 1
             assert 'builder' in table.get_row_at(0)
+
+    asyncio.run(_run())
+
+
+def test_menu_configuration_opens_config_map_list() -> None:
+    app = RoomlampApp(_info(), cluster=FakeCluster(), enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            await pilot.press('m')
+            await pilot.pause()
+            menu = app.screen
+            assert isinstance(menu, MainMenuScreen)
+            menu.query_one('#menu-list', OptionList).highlighted = 6
+            await pilot.press('enter')
+            await pilot.pause()
+            picker = app.screen
+            assert isinstance(picker, KindPickerScreen)
+            kind_list = picker.query_one('#kind-list', OptionList)
+            labels = [str(kind_list.get_option_at_index(i).prompt) for i in range(kind_list.option_count)]
+            assert labels == [
+                'Config Maps',
+                'Secrets',
+                'Back',
+            ]
+            await pilot.press('enter')
+            await pilot.pause()
+            screen = app.screen
+            assert isinstance(screen, ConfigurationListScreen)
+            assert screen.kind == CONFIG_MAP
+            assert 'pick_namespace' in enabled_actions(screen)
+            assert 'show_menu' in enabled_actions(screen)
+            table = screen.query_one('#configuration', DataTable)
+            assert table.row_count == 1
+            assert 'app-config' in table.get_row_at(0)
 
     asyncio.run(_run())
 

@@ -7,19 +7,33 @@ from typing import Any
 import yaml
 from kubernetes.client import ApiClient
 
-# js-yaml's default (Headlamp EditorDialog uses yaml.dump without lineWidth).
-# Long strings and strings with newlines become folded ``>`` blocks there.
+# js-yaml dump() default (Headlamp EditorDialog / DryRunPreviewDialog).
+# Folded ``>`` wraps long lines (lineWidth 80). Literal ``|`` keeps short
+# multiline values (ConfigMap data) without inserting blank lines; folded
+# style would, because a single newline there loads as a space.
 FOLD_WIDTH = 80
 
 
 class ResourceDumper(yaml.SafeDumper):
-    """Dump strings the way Headlamp's js-yaml dump does: ``>`` for long / multiline values."""
+    """Dump strings the way Headlamp's js-yaml dump does."""
+
+
+def _string_style(data: str) -> str | None:
+    """Pick ``|`` or ``>`` the way js-yaml ``chooseScalarStyle`` does."""
+    has_line_break = '\n' in data
+    foldable = any(len(line) > FOLD_WIDTH and not line.startswith(' ') for line in data.split('\n'))
+    if has_line_break and not foldable:
+        return '|'
+    if has_line_break or foldable:
+        return '>'
+    return None
 
 
 def _represent_str(dumper: yaml.SafeDumper, data: str) -> yaml.Node:
-    if '\n' in data or len(data) > FOLD_WIDTH:
-        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='>')
-    return dumper.represent_scalar('tag:yaml.org,2002:str', data)
+    style = _string_style(data)
+    if style is None:
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data)
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data, style=style)
 
 
 ResourceDumper.add_representer(str, _represent_str)

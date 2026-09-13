@@ -7,6 +7,7 @@ from typing import Any, Protocol
 
 from kubernetes.client import V1Eviction, V1ObjectMeta
 
+from roomlamp.k8s.configuration import CONFIGURATION_SPECS
 from roomlamp.k8s.gateway import GATEWAY_SPECS
 from roomlamp.k8s.network import NETWORK_SPECS
 from roomlamp.k8s.resources import POD_API_VERSION
@@ -73,6 +74,9 @@ def api_version_for_kind(kind: str) -> str:
     security = SECURITY_SPECS.get(kind)
     if security is not None:
         return security.api_version
+    configuration = CONFIGURATION_SPECS.get(kind)
+    if configuration is not None:
+        return configuration.api_version
     raise ValueError(f'unsupported kind: {kind}')
 
 

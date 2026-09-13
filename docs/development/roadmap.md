@@ -77,6 +77,9 @@ Useful Headlamp files when adding features:
 - Security lists: `frontend/src/components/serviceaccount/List.tsx`, `role/List.tsx`, `role/BindingList.tsx`
 - Security details: `frontend/src/components/serviceaccount/Details.tsx`, `role/Details.tsx`, `role/BindingDetails.tsx`
 - Security models: `frontend/src/lib/k8s/serviceAccount.ts`, `role.ts`, `roleBinding.ts`
+- Configuration lists: `frontend/src/components/configmap/List.tsx`, `secret/List.tsx`
+- Configuration details: `frontend/src/components/configmap/Details.tsx`, `secret/Details.tsx`
+- Configuration models: `frontend/src/lib/k8s/configMap.ts`, `secret.ts`
 
 ## Commands
 
@@ -430,13 +433,36 @@ tests/test_security.py
 
 **Not in this phase:** a separate ClusterRole / ClusterRoleBinding menu entry (they appear on the Roles / Role Bindings lists). Token create/show UI.
 
-### 10. Configuration — planned
+### 10. Configuration — done
 
-**Goal:** ConfigMap first, then Secret.
+**Goal:** ConfigMap first, then Secret (Headlamp Configuration subList Normal kinds).
 
-**Low:** HPA, VPA, PodDisruptionBudget, ResourceQuota, LimitRange, PriorityClass, RuntimeClass, Lease, MutatingWebhookConfiguration, ValidatingWebhookConfiguration.
+**What shipped:**
 
-**Not in this phase:** decoding or copying Secret data into logs. Keep Secret bytes off the status line.
+- Core v1 reads through the official client (`k8s/configuration.py`); Watch uses `_config_reader` so it does not collide with Workload / Storage / Network / Gateway / Security mixins
+- TUI: Configuration group in the phase 5 menu opens ConfigMap and Secret. Core API, so kinds are listed statically (not via Gateway-style CRD discovery). No new footer keys
+- Both kinds are namespaced (`n` still switches namespace, including All namespaces)
+- List columns follow Headlamp plus `kubectl get` (data key counts, Secret type). ConfigMap and Secret are not mixed onto one list
+- Read-only detail with Headlamp extraInfo that maps cleanly (ConfigMap data and binaryData keys, Secret type). Secret data values are not decoded or copied; the detail shows key names and byte sizes only. YAML is the live API object (base64 as Kubernetes stores it)
+- YAML / delete / RBAC reuse the phase 4 path. Detail `r` Refresh and YAML `ctrl+s` success reload the object from the API (`on_applied`)
+
+**Keys:** `m` menu, `h` home, `n` namespace, `r` refresh, `y` YAML and `d` delete from detail (and `d` from the list).
+
+**Layout:**
+
+```text
+src/roomlamp/k8s/configuration.py
+src/roomlamp/ui/screens/configuration.py
+src/roomlamp/ui/nav.py
+src/roomlamp/k8s/watch.py
+src/roomlamp/k8s/cluster.py
+src/roomlamp/k8s/auth.py
+src/roomlamp/k8s/delete.py
+tests/test_k8s_configuration.py
+tests/test_configuration.py
+```
+
+**Not in this phase:** HPA, VPA, PodDisruptionBudget, ResourceQuota, LimitRange, PriorityClass, RuntimeClass, Lease, MutatingWebhookConfiguration, ValidatingWebhookConfiguration. Decoding or copying Secret data into logs or the status line. Hide Helm Secrets toggle.
 
 ### 11. Cluster catalog — planned
 
@@ -465,6 +491,6 @@ Custom Resources stay **Low** and have no phase until requested.
 | 7. Network | Done |
 | 8. Gateway | Done |
 | 9. Security | Done |
-| 10. Configuration | Planned |
+| 10. Configuration | Done |
 | 11. Cluster catalog | Planned |
 | 12. Kubeconfig contexts | Planned |

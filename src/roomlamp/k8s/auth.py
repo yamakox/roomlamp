@@ -7,6 +7,7 @@ from typing import Any, Protocol
 
 from kubernetes.client import V1ResourceAttributes, V1SelfSubjectAccessReview, V1SelfSubjectAccessReviewSpec
 
+from roomlamp.k8s.configuration import CONFIGURATION_SPECS
 from roomlamp.k8s.gateway import GATEWAY_SPECS
 from roomlamp.k8s.network import NETWORK_SPECS
 from roomlamp.k8s.security import SECURITY_SPECS
@@ -98,6 +99,9 @@ def api_resource_for_kind(kind: str) -> ApiResourceRef:
     security = SECURITY_SPECS.get(kind)
     if security is not None:
         return ApiResourceRef(security.group, security.version, security.resource)
+    configuration = CONFIGURATION_SPECS.get(kind)
+    if configuration is not None:
+        return ApiResourceRef(configuration.group, configuration.version, configuration.resource)
     raise ValueError(f'unsupported kind: {kind}')
 
 
