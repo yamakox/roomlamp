@@ -1,4 +1,4 @@
-"""Watch Pod, workload, storage, network, gateway, and security events with the official client."""
+"""Watch Pod, workload, storage, network, gateway, security, and configuration events with the official client."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Protocol, TypeVar
 from kubernetes.client import ApiClient, CoreV1Api
 from kubernetes.watch import Watch
 
+from roomlamp.k8s.configuration import ApiConfigReader, ConfigurationSummary, summarize_configuration
 from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.gateway import ApiGatewayReader, GatewaySummary, summarize_gateway
 from roomlamp.k8s.network import ApiNetworkReader, NetworkSummary, summarize_network
@@ -30,6 +31,7 @@ StorageWatchCallback = Callable[[str, StorageSummary], None]
 NetworkWatchCallback = Callable[[str, NetworkSummary], None]
 GatewayWatchCallback = Callable[[str, GatewaySummary], None]
 SecurityWatchCallback = Callable[[str, SecuritySummary], None]
+ConfigurationWatchCallback = Callable[[str, ConfigurationSummary], None]
 ErrorCallback = Callable[[str], None]
 Summarize = Callable[[object], TKeyed]
 
@@ -100,6 +102,17 @@ class SecurityWatcher(Protocol):
         namespace: str,
         stop: threading.Event,
         on_event: SecurityWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None: ...
+
+
+class ConfigurationWatcher(Protocol):
+    def watch_configuration(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: ConfigurationWatchCallback,
         on_error: ErrorCallback,
     ) -> None: ...
 
@@ -259,6 +272,29 @@ class ApiSecurityWatcher:
             thread.start()
         for thread in threads:
             thread.join()
+
+
+class ApiConfigWatcher:
+    def __init__(self, api_client: ApiClient) -> None:
+        self._config_reader = ApiConfigReader(api_client)
+
+    def watch_configuration(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: ConfigurationWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None:
+        list_fn, args = self._config_reader.config_list_call(kind, namespace)
+        watch_stream(
+            list_fn,
+            args,
+            stop,
+            lambda raw: summarize_configuration(kind, raw),
+            on_event,
+            on_error,
+        )
 
 
 def watch_stream(

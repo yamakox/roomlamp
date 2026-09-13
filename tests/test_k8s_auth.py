@@ -11,6 +11,7 @@ from roomlamp.k8s.auth import (
 )
 from roomlamp.k8s.gateway import GATEWAY, GATEWAY_CLASS, HTTP_ROUTE
 from roomlamp.k8s.network import ENDPOINT_SLICE, ENDPOINTS, INGRESS, SERVICE
+from roomlamp.k8s.configuration import CONFIG_MAP, SECRET
 from roomlamp.k8s.security import CLUSTER_ROLE, CLUSTER_ROLE_BINDING, ROLE, ROLE_BINDING, SERVICE_ACCOUNT
 from roomlamp.k8s.storage import PV, PVC, STORAGE_CLASS
 from roomlamp.k8s.workloads import CRONJOB, DEPLOYMENT, JOB, POD_KIND
@@ -137,6 +138,10 @@ def test_api_resource_for_kind_matches_headlamp_api_names() -> None:
         'v1',
         'clusterrolebindings',
     )
+    config_map = api_resource_for_kind(CONFIG_MAP)
+    assert (config_map.group, config_map.version, config_map.resource) == ('', 'v1', 'configmaps')
+    secret = api_resource_for_kind(SECRET)
+    assert (secret.group, secret.version, secret.resource) == ('', 'v1', 'secrets')
 
 
 def test_review_access_posts_self_subject_access_review() -> None:
@@ -179,7 +184,7 @@ def test_review_access_denies_on_false_invalid_verb_and_errors() -> None:
     failing = FakeAuthApi(error=ApiException(status=403, reason='Forbidden'))
     assert review_access(failing, 'delete', POD_KIND, namespace='default', name='web') is False
     unknown = FakeAuthApi()
-    assert review_access(unknown, 'delete', 'ConfigMap', namespace='default', name='web') is False
+    assert review_access(unknown, 'delete', 'HorizontalPodAutoscaler', namespace='default', name='web') is False
     assert unknown.reviews == []
 
 

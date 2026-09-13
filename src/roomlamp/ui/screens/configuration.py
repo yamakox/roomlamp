@@ -1,4 +1,4 @@
-"""Network list and detail views for Service, Endpoints, EndpointSlice, and Ingress."""
+"""Configuration list and detail views for ConfigMap and Secret."""
 
 from __future__ import annotations
 
@@ -12,17 +12,17 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
 from roomlamp.k8s.auth import ResourceActions, actions_for, has_access_checker, initial_actions
+from roomlamp.k8s.configuration import (
+    CONFIGURATION_LABELS,
+    CONFIGURATION_SPECS,
+    ConfigurationDetail,
+    ConfigurationSummary,
+    is_namespaced,
+    split_configuration_key,
+)
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.delete import DeletedObject
 from roomlamp.k8s.errors import api_error_message
-from roomlamp.k8s.network import (
-    NETWORK_LABELS,
-    NETWORK_SPECS,
-    NetworkDetail,
-    NetworkSummary,
-    is_namespaced,
-    split_network_key,
-)
 from roomlamp.k8s.resources import ALL_NAMESPACES
 from roomlamp.k8s.watch import apply_watch_event
 from roomlamp.ui.bindings import HOME_BINDING, MENU_BINDING, NavigationMixin
@@ -31,10 +31,10 @@ from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
 
 
-def sort_network(items: list[NetworkSummary], column: int, ascending: bool) -> list[NetworkSummary]:
-    """Sort network rows. ``column`` is an index into the kind's columns."""
+def sort_configuration(items: list[ConfigurationSummary], column: int, ascending: bool) -> list[ConfigurationSummary]:
+    """Sort configuration rows. ``column`` is an index into the kind's columns."""
 
-    def key(item: NetworkSummary) -> tuple[object, ...]:
+    def key(item: ConfigurationSummary) -> tuple[object, ...]:
         keys = item.sort_keys
         if not keys:
             return (item.namespace, item.name)
@@ -44,7 +44,7 @@ def sort_network(items: list[NetworkSummary], column: int, ascending: bool) -> l
     return sorted(items, key=key, reverse=not ascending)
 
 
-class NetworkListScreen(NavigationMixin, Screen[None]):
+class ConfigurationListScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
         MENU_BINDING,
         HOME_BINDING,
@@ -68,7 +68,7 @@ class NetworkListScreen(NavigationMixin, Screen[None]):
         self.namespace = namespace
         self.enable_watch = enable_watch
         self._namespaces: list[str] = []
-        self._items: dict[str, NetworkSummary] = {}
+        self._items: dict[str, ConfigurationSummary] = {}
         self.sort_column = 0
         self.sort_ascending = True
         self._watch_stop: threading.Event | None = None
@@ -79,7 +79,7 @@ class NetworkListScreen(NavigationMixin, Screen[None]):
     def on_mount(self) -> None:
         self._set_subtitle()
         if self.enable_watch:
-            self.run_worker(self._load_initial, exclusive=True, group='network-load')
+            self.run_worker(self._load_initial, exclusive=True, group='configuration-load')
         else:
             self._load_sync()
 
@@ -89,9 +89,9 @@ class NetworkListScreen(NavigationMixin, Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Vertical(
-            Static('', id='network-status'),
-            DataTable(id='network', cursor_type='row'),
-            id='network-wrap',
+            Static('', id='configuration-status'),
+            DataTable(id='configuration', cursor_type='row'),
+            id='configuration-wrap',
         )
         yield Footer()
 
@@ -107,7 +107,7 @@ class NetworkListScreen(NavigationMixin, Screen[None]):
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         key = str(event.row_key.value) if event.row_key is not None else ''
         if key:
-            self.run_worker(self._open_detail(key), exclusive=True, group='network-detail')
+            self.run_worker(self._open_detail(key), exclusive=True, group='configuration-detail')
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         key = str(event.row_key.value) if event.row_key is not None else None
@@ -134,7 +134,7 @@ class NetworkListScreen(NavigationMixin, Screen[None]):
         self.namespace = chosen
         self._stop_watch()
         if self.enable_watch:
-            self.run_worker(self._load_initial, exclusive=True, group='network-load')
+            self.run_worker(self._load_initial, exclusive=True, group='configuration-load')
         else:
             self._load_sync()
 
@@ -151,10 +151,10 @@ class NetworkListScreen(NavigationMixin, Screen[None]):
             self._load_sync()
 
     def action_delete(self) -> None:
-        key = selected_row_key(self.query_one('#network', DataTable))
+        key = selected_row_key(self.query_one('#configuration', DataTable))
         if not key:
             return
-        namespace, name = split_network_key(self.kind, key)
+        namespace, name = split_configuration_key(self.kind, key)
         request_delete(
             self,
             self.cluster,
@@ -190,55 +190,55 @@ class NetworkListScreen(NavigationMixin, Screen[None]):
         if self.enable_watch:
             self._start_watch()
 
-    def _fetch(self) -> tuple[list[str], list[NetworkSummary]]:
+    def _fetch(self) -> tuple[list[str], list[ConfigurationSummary]]:
         namespaces: list[str] = []
         if is_namespaced(self.kind):
             try:
                 namespaces = self.cluster.list_namespaces()
             except Exception:
                 namespaces = [self.namespace] if self.namespace != ALL_NAMESPACES else []
-        items = self.cluster.list_network(self.kind, self.namespace)
+        items = self.cluster.list_configuration(self.kind, self.namespace)
         return namespaces, items
 
-    def _apply_list(self, namespaces: list[str], items: list[NetworkSummary]) -> None:
+    def _apply_list(self, namespaces: list[str], items: list[ConfigurationSummary]) -> None:
         self._namespaces = namespaces
         self._items = {item.key: item for item in items}
         self._render_table()
         self._set_subtitle()
-        key = selected_row_key(self.query_one('#network', DataTable))
+        key = selected_row_key(self.query_one('#configuration', DataTable))
         self._queue_auth(key)
 
-    def _apply_event(self, event_type: str, item: NetworkSummary) -> None:
+    def _apply_event(self, event_type: str, item: ConfigurationSummary) -> None:
         self._items = apply_watch_event(self._items, event_type, item)
         self._render_table()
 
     def _render_table(self) -> None:
-        table = self.query_one('#network', DataTable)
-        columns = NETWORK_SPECS[self.kind].columns
+        table = self.query_one('#configuration', DataTable)
+        columns = CONFIGURATION_SPECS[self.kind].columns
         if not table.columns:
             table.add_columns(*columns)
         table.clear()
-        for item in sort_network(list(self._items.values()), self.sort_column, self.sort_ascending):
+        for item in sort_configuration(list(self._items.values()), self.sort_column, self.sort_ascending):
             table.add_row(*item.cells, key=item.key)
 
     async def _open_detail(self, key: str) -> None:
-        namespace, name = split_network_key(self.kind, key)
+        namespace, name = split_configuration_key(self.kind, key)
         try:
-            detail = await asyncio.to_thread(self.cluster.get_network, self.kind, namespace, name)
+            detail = await asyncio.to_thread(self.cluster.get_configuration, self.kind, namespace, name)
         except Exception as exc:
             self._set_status(api_error_message(exc))
             return
-        await self.app.push_screen(NetworkDetailScreen(detail, self.cluster))
+        await self.app.push_screen(ConfigurationDetailScreen(detail, self.cluster))
 
     def _start_watch(self) -> None:
-        if not hasattr(self.cluster, 'watch_network'):
+        if not hasattr(self.cluster, 'watch_configuration'):
             return
         self._stop_watch()
         stop = threading.Event()
         self._watch_stop = stop
 
         def _run() -> None:
-            self.cluster.watch_network(
+            self.cluster.watch_configuration(
                 self.kind,
                 self.namespace,
                 stop,
@@ -271,7 +271,7 @@ class NetworkListScreen(NavigationMixin, Screen[None]):
         self.run_worker(self._load_row_auth(key), exclusive=True, group='auth')
 
     async def _load_row_auth(self, key: str) -> None:
-        namespace, name = split_network_key(self.kind, key)
+        namespace, name = split_configuration_key(self.kind, key)
         auth = await asyncio.to_thread(actions_for, self.cluster, self.kind, namespace, name)
         if self._auth_key != key:
             return
@@ -279,11 +279,11 @@ class NetworkListScreen(NavigationMixin, Screen[None]):
         self.refresh_bindings()
 
     def _set_status(self, message: str) -> None:
-        self.query_one('#network-status', Static).update(message)
+        self.query_one('#configuration-status', Static).update(message)
 
     def _set_subtitle(self) -> None:
         context = self.info.context_name or 'no context'
-        label = NETWORK_LABELS[self.kind]
+        label = CONFIGURATION_LABELS[self.kind]
         if not is_namespaced(self.kind):
             self.sub_title = f'{context} / {label}'
             return
@@ -291,7 +291,7 @@ class NetworkListScreen(NavigationMixin, Screen[None]):
         self.sub_title = f'{context} / {namespace} / {label}'
 
 
-class NetworkDetailScreen(NavigationMixin, Screen[None]):
+class ConfigurationDetailScreen(NavigationMixin, Screen[None]):
     BINDINGS = [
         MENU_BINDING,
         HOME_BINDING,
@@ -302,7 +302,7 @@ class NetworkDetailScreen(NavigationMixin, Screen[None]):
         ('backspace', 'app.pop_screen', 'Back'),
     ]
 
-    def __init__(self, detail: NetworkDetail, cluster: Any) -> None:
+    def __init__(self, detail: ConfigurationDetail, cluster: Any) -> None:
         super().__init__()
         self.detail = detail
         self.cluster = cluster
@@ -338,8 +338,8 @@ class NetworkDetailScreen(NavigationMixin, Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield VerticalScroll(
-            Static(_detail_text(self.detail), id='network-detail'),
-            id='network-detail-wrap',
+            Static(_detail_text(self.detail), id='configuration-detail'),
+            id='configuration-detail-wrap',
         )
         yield Footer()
 
@@ -349,7 +349,7 @@ class NetworkDetailScreen(NavigationMixin, Screen[None]):
     async def _reload_detail(self) -> None:
         try:
             self.detail = await asyncio.to_thread(
-                self.cluster.get_network,
+                self.cluster.get_configuration,
                 self.detail.kind,
                 self.detail.namespace,
                 self.detail.name,
@@ -359,12 +359,12 @@ class NetworkDetailScreen(NavigationMixin, Screen[None]):
             return
         self.kind = self.detail.kind
         self._set_subtitle()
-        self.query_one('#network-detail', Static).update(_detail_text(self.detail))
+        self.query_one('#configuration-detail', Static).update(_detail_text(self.detail))
 
     async def action_show_yaml(self) -> None:
         try:
             text = await asyncio.to_thread(
-                self.cluster.get_network_yaml,
+                self.cluster.get_configuration_yaml,
                 self.detail.kind,
                 self.detail.namespace,
                 self.detail.name,
@@ -383,7 +383,7 @@ class NetworkDetailScreen(NavigationMixin, Screen[None]):
             YamlViewScreen(
                 title,
                 text,
-                reload=lambda: self.cluster.get_network_yaml(kind, namespace, name),
+                reload=lambda: self.cluster.get_configuration_yaml(kind, namespace, name),
                 apply=lambda body, dry_run=False: self.cluster.apply_yaml(
                     body, dry_run=dry_run, default_namespace=namespace or 'default'
                 ),
@@ -404,7 +404,7 @@ class NetworkDetailScreen(NavigationMixin, Screen[None]):
         )
 
 
-def _detail_text(detail: NetworkDetail) -> str:
+def _detail_text(detail: ConfigurationDetail) -> str:
     labels = ', '.join(f'{key}={value}' for key, value in detail.labels) or '(none)'
     rows = [
         ('Kind', detail.kind),

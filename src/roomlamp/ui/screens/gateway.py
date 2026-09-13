@@ -7,7 +7,7 @@ import threading
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
@@ -332,7 +332,7 @@ class GatewayDetailScreen(NavigationMixin, Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Vertical(
+        yield VerticalScroll(
             Static(_detail_text(self.detail), id='gateway-detail'),
             id='gateway-detail-wrap',
         )

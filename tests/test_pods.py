@@ -12,6 +12,7 @@ from roomlamp.ui.screens.namespaces import NamespaceScreen
 from roomlamp.ui.screens.pod_detail import PodDetailScreen
 from roomlamp.ui.screens.pods import PodListScreen, sort_pods
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
+from textual.containers import VerticalScroll
 from textual.widgets import DataTable, Log, Static, TextArea
 
 
@@ -115,6 +116,45 @@ def test_pod_detail_opens_from_row() -> None:
             detail = app.screen.query_one('#pod-detail', Static)
             assert 'web' in str(detail.content)
             assert '10.1.0.5' in str(detail.content)
+
+    asyncio.run(_run())
+
+
+def test_pod_detail_scrolls_long_text() -> None:
+    class TallCluster(FakeCluster):
+        def get_pod(self, namespace: str, name: str) -> PodDetail:
+            return PodDetail(
+                name=name,
+                namespace=namespace,
+                uid='uid-1',
+                created='2026-01-02T00:00:00+00:00',
+                phase='Running',
+                ready='1/1',
+                restarts=0,
+                node='node-a',
+                pod_ip='10.1.0.5',
+                labels=(),
+                containers=tuple(f'c{index}: running' for index in range(40)),
+                container_names=('app',),
+                default_container='app',
+            )
+
+    app = RoomlampApp(_info(), cluster=TallCluster(), enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test(size=(80, 24)) as pilot:
+            await open_kind(app, pilot)
+            screen = app.screen
+            assert isinstance(screen, PodListScreen)
+            await screen._open_detail('default/web')
+            await pilot.pause()
+            wrap = app.screen.query_one('#pod-detail-wrap', VerticalScroll)
+            assert wrap.max_scroll_y > 0
+            wrap.scroll_end(animate=False)
+            await pilot.pause()
+            assert wrap.scroll_offset.y == wrap.max_scroll_y
+            text = str(app.screen.query_one('#pod-detail', Static).content)
+            assert 'c39: running' in text
 
     asyncio.run(_run())
 

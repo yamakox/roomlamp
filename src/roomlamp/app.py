@@ -15,7 +15,7 @@ class RoomlampApp(App[None]):
 
     TITLE = 'Roomlamp'
     CSS = """
-    #home, #pods-wrap, #pod-detail-wrap, #workloads-wrap, #workload-detail-wrap, #storage-wrap, #storage-detail-wrap, #network-wrap, #network-detail-wrap, #gateway-wrap, #gateway-detail-wrap, #security-wrap, #security-detail-wrap, #logs-wrap, #exec-wrap {
+    #home, #pods-wrap, #pod-detail-wrap, #workloads-wrap, #workload-detail-wrap, #storage-wrap, #storage-detail-wrap, #network-wrap, #network-detail-wrap, #gateway-wrap, #gateway-detail-wrap, #security-wrap, #security-detail-wrap, #configuration-wrap, #configuration-detail-wrap, #logs-wrap, #exec-wrap {
         padding: 1 2;
     }
 
@@ -23,7 +23,11 @@ class RoomlampApp(App[None]):
         padding: 1 2;
     }
 
-    #home-status, #pods-status, #workloads-status, #storage-status, #network-status, #gateway-status, #security-status, #logs-status, #exec-status {
+    #pod-detail-wrap, #workload-detail-wrap, #storage-detail-wrap, #network-detail-wrap, #gateway-detail-wrap, #security-detail-wrap, #configuration-detail-wrap {
+        height: 1fr;
+    }
+
+    #home-status, #pods-status, #workloads-status, #storage-status, #network-status, #gateway-status, #security-status, #configuration-status, #logs-status, #exec-status {
         margin-bottom: 1;
     }
 

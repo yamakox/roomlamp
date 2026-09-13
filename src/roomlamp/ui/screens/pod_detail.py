@@ -6,7 +6,7 @@ import asyncio
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
@@ -72,7 +72,7 @@ class PodDetailScreen(NavigationMixin, Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Vertical(Static(_detail_text(self.detail), id='pod-detail'), id='pod-detail-wrap')
+        yield VerticalScroll(Static(_detail_text(self.detail), id='pod-detail'), id='pod-detail-wrap')
         yield Footer()
 
     async def action_refresh(self) -> None:

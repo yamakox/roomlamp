@@ -55,8 +55,10 @@ def test_api_version_for_kind_matches_workload_groups() -> None:
     assert api_version_for_kind('RoleBinding') == 'rbac.authorization.k8s.io/v1'
     assert api_version_for_kind('ClusterRole') == 'rbac.authorization.k8s.io/v1'
     assert api_version_for_kind('ClusterRoleBinding') == 'rbac.authorization.k8s.io/v1'
+    assert api_version_for_kind('ConfigMap') == 'v1'
+    assert api_version_for_kind('Secret') == 'v1'
     try:
-        api_version_for_kind('ConfigMap')
+        api_version_for_kind('HorizontalPodAutoscaler')
     except ValueError as exc:
         assert 'unsupported kind' in str(exc)
     else:

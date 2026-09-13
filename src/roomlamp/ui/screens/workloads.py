@@ -7,7 +7,7 @@ import threading
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
@@ -15,6 +15,7 @@ from roomlamp.k8s.auth import ResourceActions, actions_for, has_access_checker, 
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.delete import DeletedObject
 from roomlamp.k8s.errors import api_error_message
+from roomlamp.k8s.configuration import is_configuration_kind
 from roomlamp.k8s.gateway import is_gateway_kind
 from roomlamp.k8s.network import is_network_kind
 from roomlamp.k8s.resources import ALL_NAMESPACES
@@ -51,7 +52,7 @@ def show_kind_list(
     *,
     replace: bool,
 ) -> None:
-    """Open Pods, a workload, Storage, Network, Gateway, or Security kind list, replacing the current screen when asked."""
+    """Open Pods, a workload, Storage, Network, Gateway, Security, or Configuration kind list, replacing the current screen when asked."""
     if kind == POD_KIND:
         from roomlamp.ui.screens.pods import PodListScreen
 
@@ -72,6 +73,10 @@ def show_kind_list(
         from roomlamp.ui.screens.security import SecurityListScreen
 
         screen = SecurityListScreen(info, cluster, kind, namespace, enable_watch)
+    elif is_configuration_kind(kind):
+        from roomlamp.ui.screens.configuration import ConfigurationListScreen
+
+        screen = ConfigurationListScreen(info, cluster, kind, namespace, enable_watch)
     else:
         screen = WorkloadListScreen(info, cluster, kind, namespace, enable_watch)
     if replace:
@@ -358,7 +363,7 @@ class WorkloadDetailScreen(NavigationMixin, Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Vertical(
+        yield VerticalScroll(
             Static(_detail_text(self.detail), id='workload-detail'),
             id='workload-detail-wrap',
         )
