@@ -80,6 +80,10 @@ Useful Headlamp files when adding features:
 - Configuration lists: `frontend/src/components/configmap/List.tsx`, `secret/List.tsx`
 - Configuration details: `frontend/src/components/configmap/Details.tsx`, `secret/Details.tsx`
 - Configuration models: `frontend/src/lib/k8s/configMap.ts`, `secret.ts`
+- Cluster lists: `frontend/src/components/namespace/List.tsx`, `frontend/src/components/node/List.tsx`
+- Cluster details: `frontend/src/components/namespace/Details.tsx`, `frontend/src/components/node/Details.tsx`
+- Cluster models: `frontend/src/lib/k8s/namespace.ts`, `node.ts`
+- Namespace type-to-confirm delete: `frontend/src/components/common/Resource/DeleteButton.tsx`
 
 ## Commands
 
@@ -229,7 +233,7 @@ tests/test_auth.py
 
 ## Later phases
 
-Phases 1–9 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, a two-level group menu, **Storage**, **Network**, **Gateway**, and **Security**. From here, one Headlamp in-cluster sidebar group is one phase.
+Phases 1–11 covered the **Workloads** sidebar (Pods and common controllers), operator actions, a cluster home with metrics, a two-level group menu, **Storage**, **Network**, **Gateway**, **Security**, **Configuration**, and the **Cluster** catalog (Namespaces and Node detail). From here, one Headlamp in-cluster sidebar group is one phase.
 
 Do not copy Headlamp's web, Electron, in-cluster, or plugin architecture. Reuse the list / detail / Watch / YAML / delete / RBAC path already shipped.
 
@@ -286,7 +290,7 @@ tests/test_menu.py
 - Add each shipped kind to `ui/nav.py` so it appears under its group in the phase 5 menu.
 - Plugins, Helm charts, the resource map, Electron-only port-forward, Advanced Search, Scheduling (alpha), and in-cluster OIDC stay out of scope unless requested.
 
-Headlamp sidebar order after Workloads (`frontend/src/components/Sidebar/useSidebarItems.tsx`): Storage, Network, Gateway, Security, Configuration, then Custom Resources. Cluster sits above Workloads in Headlamp. Phase 5 already shows a Node **list** on home; Namespace/Node **objects** (detail, YAML, delete) wait until the cluster-catalog phase. The existing `n` namespace picker stays. JobSet and LeaderWorkerSet stay out of Workloads until requested.
+Headlamp sidebar order after Workloads (`frontend/src/components/Sidebar/useSidebarItems.tsx`): Storage, Network, Gateway, Security, Configuration, then Custom Resources. Cluster sits above Workloads in Headlamp. Phase 5 already shows a Node **list** on home; Namespace and Node **objects** (detail, YAML, delete) shipped in the cluster-catalog phase. The existing `n` namespace picker stays. JobSet and LeaderWorkerSet stay out of Workloads until requested.
 
 **Priority:**
 
@@ -464,9 +468,38 @@ tests/test_configuration.py
 
 **Not in this phase:** HPA, VPA, PodDisruptionBudget, ResourceQuota, LimitRange, PriorityClass, RuntimeClass, Lease, MutatingWebhookConfiguration, ValidatingWebhookConfiguration. Decoding or copying Secret data into logs or the status line. Hide Helm Secrets toggle.
 
-### 11. Cluster catalog — planned
+### 11. Cluster catalog — done
 
 **Goal:** Namespace as a catalog object, and Node **detail** / YAML / delete (Headlamp Cluster subList). The home screen already lists Nodes (phase 5). Include Namespace type-to-confirm delete if delete stays in scope.
+
+**What shipped:**
+
+- Core v1 reads through the official client (`k8s/catalog.py`); Watch uses `_catalog_reader` so it does not collide with `ClusterAccess`, home `ApiNodeReader`, or `_config_reader`
+- TUI: Cluster group in the phase 5 menu opens Namespace and Node. Core API, so kinds are listed statically (not via Gateway-style CRD discovery). No new footer keys
+- Both kinds are cluster-scoped (`n` hidden). The existing `n` namespace picker on namespaced lists is unchanged
+- List columns follow Headlamp plus `kubectl get` (Namespace status; Node Ready / taints / roles / IPs / version). Catalog Node lists do not mix in metrics bars (those stay on home)
+- Read-only detail with Headlamp extraInfo that maps cleanly (Namespace phase and conditions; Node roles, taints, addresses, capacity/allocatable, system info). No drain / cordon / node shell, and no related ResourceQuota / LimitRange / Pod tables
+- YAML / delete / RBAC reuse the phase 4 path. Detail `r` Refresh and YAML `ctrl+s` success reload the object from the API (`on_applied`)
+- Protected Namespaces (`default`, `kube-public`, `kube-node-lease`, `kube-system`) require typing the name before Delete, matching Headlamp `DeleteButton`
+- Home Node table stays list-only: no row cursor, Enter does not open Node detail. The home screen is a `VerticalScroll` so a short terminal can scroll identity, overview, and the Node table together
+
+**Keys:** `m` menu, `h` home, `r` refresh, `y` YAML and `d` delete from detail (and `d` from the list). No `n` on Cluster lists.
+
+**Layout:**
+
+```text
+src/roomlamp/k8s/catalog.py
+src/roomlamp/ui/screens/catalog.py
+src/roomlamp/ui/nav.py
+src/roomlamp/k8s/watch.py
+src/roomlamp/k8s/cluster.py
+src/roomlamp/k8s/auth.py
+src/roomlamp/k8s/delete.py
+src/roomlamp/ui/screens/home.py
+src/roomlamp/ui/screens/delete.py
+tests/test_k8s_catalog.py
+tests/test_catalog.py
+```
 
 **Not in this phase:** Advanced Search, the resource map, replacing the existing namespace picker, replacing the home Node table.
 
@@ -492,5 +525,5 @@ Custom Resources stay **Low** and have no phase until requested.
 | 8. Gateway | Done |
 | 9. Security | Done |
 | 10. Configuration | Done |
-| 11. Cluster catalog | Planned |
+| 11. Cluster catalog | Done |
 | 12. Kubeconfig contexts | Planned |

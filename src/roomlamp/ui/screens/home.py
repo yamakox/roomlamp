@@ -6,7 +6,7 @@ import asyncio
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
@@ -79,12 +79,14 @@ class HomeScreen(NavigationMixin, Screen[None]):
                 self.set_interval(OVERVIEW_INTERVAL_SECONDS, self.action_refresh)
 
     def compose(self) -> ComposeResult:
+        table = DataTable(id='nodes', cursor_type='none', show_cursor=False)
+        table.can_focus = False
         yield Header()
-        yield Vertical(
+        yield VerticalScroll(
             Static(_identity(self.info), id='home-identity'),
             Static('', id='home-status'),
             Static('', id='home-overview'),
-            DataTable(id='nodes', cursor_type='row'),
+            table,
             id='home',
         )
         yield Footer()

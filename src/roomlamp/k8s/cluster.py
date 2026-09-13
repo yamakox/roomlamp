@@ -7,7 +7,9 @@ from kubernetes.dynamic import DynamicClient
 
 from roomlamp.k8s.apply import AppliedObject, apply_yaml as apply_documents
 from roomlamp.k8s.auth import review_access
+from roomlamp.k8s.catalog import ApiCatalogReader
 from roomlamp.k8s.client import build_api_client
+from roomlamp.k8s.configuration import ApiConfigReader
 from roomlamp.k8s.context import ClusterInfo
 from roomlamp.k8s.delete import (
     DeletedObject,
@@ -15,7 +17,6 @@ from roomlamp.k8s.delete import (
     delete_object as delete_resource_object,
     evict_pod as evict_pod_object,
 )
-from roomlamp.k8s.configuration import ApiConfigReader
 from roomlamp.k8s.gateway import ApiGatewayReader
 from roomlamp.k8s.network import ApiNetworkReader
 from roomlamp.k8s.nodes import ApiNodeReader
@@ -23,6 +24,7 @@ from roomlamp.k8s.resources import ApiPodReader
 from roomlamp.k8s.security import ApiSecurityReader
 from roomlamp.k8s.storage import ApiStorageReader
 from roomlamp.k8s.watch import (
+    ApiCatalogWatcher,
     ApiConfigWatcher,
     ApiGatewayWatcher,
     ApiNetworkWatcher,
@@ -49,6 +51,8 @@ class ClusterAccess(
     ApiSecurityWatcher,
     ApiConfigReader,
     ApiConfigWatcher,
+    ApiCatalogReader,
+    ApiCatalogWatcher,
     ApiNodeReader,
 ):
     """Read, watch, apply, exec, and delete cluster objects with one shared API client."""
@@ -68,6 +72,8 @@ class ClusterAccess(
         ApiSecurityWatcher.__init__(self, api_client)
         ApiConfigReader.__init__(self, api_client)
         ApiConfigWatcher.__init__(self, api_client)
+        ApiCatalogReader.__init__(self, api_client)
+        ApiCatalogWatcher.__init__(self, api_client)
         ApiNodeReader.__init__(self, api_client)
         self._dynamic: DynamicClient | None = None
         self._auth_api: AuthorizationV1Api | None = None

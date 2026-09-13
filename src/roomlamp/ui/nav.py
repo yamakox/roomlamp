@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from roomlamp.k8s.catalog import CLUSTER_KINDS, CLUSTER_LABELS
 from roomlamp.k8s.configuration import CONFIGURATION_KINDS, CONFIGURATION_LABELS
 from roomlamp.k8s.gateway import GATEWAY_LABELS
 from roomlamp.k8s.network import NETWORK_KINDS, NETWORK_LABELS
@@ -33,7 +34,11 @@ class NavGroup:
 
 
 NAV_GROUPS: tuple[NavGroup, ...] = (
-    NavGroup('cluster', 'Cluster', ()),
+    NavGroup(
+        'cluster',
+        'Cluster',
+        tuple(NavKind(kind, CLUSTER_LABELS[kind]) for kind in CLUSTER_KINDS),
+    ),
     NavGroup(
         'workloads',
         'Workloads',

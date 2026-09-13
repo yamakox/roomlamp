@@ -10,7 +10,7 @@ from typing import Any
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.screen import ModalScreen, Screen
-from textual.widgets import DataTable, Label, OptionList
+from textual.widgets import DataTable, Input, Label, OptionList
 from textual.widgets.option_list import Option
 
 from roomlamp.k8s.apply import apply_error_message
@@ -38,6 +38,7 @@ class DeleteConfirmScreen(ModalScreen[DeleteChoice | None]):
         *,
         allow_delete: bool = True,
         allow_evict: bool = False,
+        require_typed_name: str | None = None,
     ) -> None:
         super().__init__()
         self.item_kind = kind
@@ -45,6 +46,7 @@ class DeleteConfirmScreen(ModalScreen[DeleteChoice | None]):
         self.item_namespace = namespace
         self.allow_delete = allow_delete
         self.allow_evict = allow_evict
+        self.require_typed_name = require_typed_name
 
     def compose(self) -> ComposeResult:
         options: list[Option] = []
@@ -57,16 +59,30 @@ class DeleteConfirmScreen(ModalScreen[DeleteChoice | None]):
             )
         if self.allow_evict:
             options.append(Option('Evict', id=OPTION_EVICT))
-        yield Vertical(
-            Label(
+        with Vertical(id='delete-dialog'):
+            yield Label(
                 confirm_message(self.item_kind, self.item_name, self.item_namespace),
                 id='delete-prompt',
-            ),
-            OptionList(*options, id='delete-list'),
-            id='delete-dialog',
-        )
+            )
+            if self.require_typed_name:
+                yield Label(
+                    'This is a system namespace. Deleting it may break your cluster.',
+                    id='delete-warning',
+                )
+                yield Label(
+                    f'To confirm, type {self.require_typed_name} in the field below.',
+                    id='delete-confirm-hint',
+                )
+                yield Input(
+                    placeholder=self.require_typed_name,
+                    id='delete-confirm-input',
+                )
+            yield OptionList(*options, id='delete-list')
 
     def on_mount(self) -> None:
+        if self.require_typed_name:
+            self.query_one('#delete-confirm-input', Input).focus()
+            return
         option_list = self.query_one('#delete-list', OptionList)
         option_list.highlighted = 0
         option_list.focus()
@@ -76,6 +92,9 @@ class DeleteConfirmScreen(ModalScreen[DeleteChoice | None]):
         if option_id == OPTION_EVICT:
             self.dismiss(DeleteChoice(ACTION_EVICT, False))
             return
+        if option_id in {OPTION_FORCE, OPTION_DELETE} and not self._typed_ok():
+            self.notify('Type the namespace name to confirm.', severity='warning')
+            return
         if option_id == OPTION_FORCE:
             self.dismiss(DeleteChoice(ACTION_DELETE, True))
             return
@@ -83,6 +102,20 @@ class DeleteConfirmScreen(ModalScreen[DeleteChoice | None]):
             self.dismiss(DeleteChoice(ACTION_DELETE, False))
             return
         self.dismiss(None)
+
+    def on_input_submitted(self, _event: Input.Submitted) -> None:
+        if not self.allow_delete:
+            return
+        if not self._typed_ok():
+            self.notify('Type the namespace name to confirm.', severity='warning')
+            return
+        self.dismiss(DeleteChoice(ACTION_DELETE, False))
+
+    def _typed_ok(self) -> bool:
+        if not self.require_typed_name:
+            return True
+        typed = self.query_one('#delete-confirm-input', Input).value.strip()
+        return typed == self.require_typed_name
 
     def action_cancel(self) -> None:
         self.dismiss(None)
@@ -110,6 +143,7 @@ def request_delete(
     *,
     allow_delete: bool = True,
     allow_evict: bool = False,
+    require_typed_name: str | None = None,
     on_success: Callable[[DeletedObject], None] | None = None,
 ) -> None:
     """Open the confirm modal, then DELETE or evict off the Textual event loop."""
@@ -132,6 +166,7 @@ def request_delete(
             namespace,
             allow_delete=allow_delete,
             allow_evict=allow_evict,
+            require_typed_name=require_typed_name,
         ),
         callback=_chosen,
     )
