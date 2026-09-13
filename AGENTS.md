@@ -132,7 +132,8 @@ This project uses the src layout. Add new modules under the target layout below 
       - `storage.py` — PersistentVolumeClaim, PersistentVolume, StorageClass
       - `network.py` — Service, Endpoints, EndpointSlice, Ingress
       - `gateway.py` — Gateway, GatewayClass, HTTPRoute (`gateway.networking.k8s.io`)
-      - `watch.py` — Pod, workload, storage, network, and gateway Watch streams
+      - `security.py` — ServiceAccount, Role, RoleBinding (ClusterRole / ClusterRoleBinding mixed into Role / RoleBinding lists)
+      - `watch.py` — Pod, workload, storage, network, gateway, and security Watch streams
       - `dump.py` — read-only YAML for API objects
       - `logs.py` — Pod log snapshot and follow
       - `apply.py` — YAML/JSON apply (POST, then PUT on 409/403)
@@ -144,7 +145,7 @@ This project uses the src layout. Add new modules under the target layout below 
     - `nav.py` — sidebar groups for the main menu
     - `bindings.py` — shared `m` Menu / `h` Home bindings and stack helpers
     - `usage.py` — htop-style usage bars
-    - `screens/` — home, main menu, Pod list/detail, workload list/detail, storage list/detail, network list/detail, gateway list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
+    - `screens/` — home, main menu, Pod list/detail, workload list/detail, storage list/detail, network list/detail, gateway list/detail, security list/detail, namespace picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
     - `widgets/` — reusable widgets (add when a second consumer needs one)
 - **`tests/`** — pytest suite (outside `src/`)
 - **`docs/`** — developer and user docs; reference specific files under `docs/` for workflows when they exist

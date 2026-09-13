@@ -11,6 +11,7 @@ from roomlamp.k8s.auth import (
 )
 from roomlamp.k8s.gateway import GATEWAY, GATEWAY_CLASS, HTTP_ROUTE
 from roomlamp.k8s.network import ENDPOINT_SLICE, ENDPOINTS, INGRESS, SERVICE
+from roomlamp.k8s.security import CLUSTER_ROLE, CLUSTER_ROLE_BINDING, ROLE, ROLE_BINDING, SERVICE_ACCOUNT
 from roomlamp.k8s.storage import PV, PVC, STORAGE_CLASS
 from roomlamp.k8s.workloads import CRONJOB, DEPLOYMENT, JOB, POD_KIND
 
@@ -109,6 +110,32 @@ def test_api_resource_for_kind_matches_headlamp_api_names() -> None:
         'gateway.networking.k8s.io',
         'v1',
         'httproutes',
+    )
+    service_account = api_resource_for_kind(SERVICE_ACCOUNT)
+    assert (service_account.group, service_account.version, service_account.resource) == (
+        '',
+        'v1',
+        'serviceaccounts',
+    )
+    role = api_resource_for_kind(ROLE)
+    assert (role.group, role.version, role.resource) == ('rbac.authorization.k8s.io', 'v1', 'roles')
+    role_binding = api_resource_for_kind(ROLE_BINDING)
+    assert (role_binding.group, role_binding.version, role_binding.resource) == (
+        'rbac.authorization.k8s.io',
+        'v1',
+        'rolebindings',
+    )
+    cluster_role = api_resource_for_kind(CLUSTER_ROLE)
+    assert (cluster_role.group, cluster_role.version, cluster_role.resource) == (
+        'rbac.authorization.k8s.io',
+        'v1',
+        'clusterroles',
+    )
+    cluster_role_binding = api_resource_for_kind(CLUSTER_ROLE_BINDING)
+    assert (cluster_role_binding.group, cluster_role_binding.version, cluster_role_binding.resource) == (
+        'rbac.authorization.k8s.io',
+        'v1',
+        'clusterrolebindings',
     )
 
 

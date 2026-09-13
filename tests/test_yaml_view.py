@@ -40,6 +40,7 @@ def test_yaml_apply_sends_edited_text_and_closes() -> None:
             await pilot.pause()
             original = 'apiVersion: v1\nkind: Pod\nmetadata:\n  name: web\n'
             edited = original + '  labels:\n    app: web\n'
+            called: list[bool] = []
             await app.push_screen(
                 YamlViewScreen(
                     'Pod default/web',
@@ -47,6 +48,7 @@ def test_yaml_apply_sends_edited_text_and_closes() -> None:
                     apply=lambda text, dry_run=False: cluster.apply_yaml(
                         text, dry_run=dry_run, default_namespace='default'
                     ),
+                    on_applied=lambda: called.append(True),
                 )
             )
             await pilot.pause()
@@ -56,6 +58,7 @@ def test_yaml_apply_sends_edited_text_and_closes() -> None:
             await pilot.pause()
             assert cluster.calls == [(edited, False, 'default')]
             assert not isinstance(app.screen, YamlViewScreen)
+            assert called == [True]
 
     asyncio.run(_run())
 
@@ -68,6 +71,7 @@ def test_yaml_dry_run_stays_open() -> None:
         async with app.run_test() as pilot:
             await pilot.pause()
             original = 'apiVersion: v1\nkind: Pod\nmetadata:\n  name: web\n'
+            called: list[bool] = []
             await app.push_screen(
                 YamlViewScreen(
                     'Pod default/web',
@@ -75,6 +79,7 @@ def test_yaml_dry_run_stays_open() -> None:
                     apply=lambda text, dry_run=False: cluster.apply_yaml(
                         text, dry_run=dry_run, default_namespace='default'
                     ),
+                    on_applied=lambda: called.append(True),
                 )
             )
             await pilot.pause()
@@ -83,6 +88,7 @@ def test_yaml_dry_run_stays_open() -> None:
             await pilot.pause()
             assert cluster.calls[0][1] is True
             assert isinstance(app.screen, YamlViewScreen)
+            assert called == []
 
     asyncio.run(_run())
 

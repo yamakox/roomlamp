@@ -1,4 +1,4 @@
-"""Watch Pod, workload, storage, network, and gateway events with the official client."""
+"""Watch Pod, workload, storage, network, gateway, and security events with the official client."""
 
 from __future__ import annotations
 
@@ -13,6 +13,13 @@ from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.gateway import ApiGatewayReader, GatewaySummary, summarize_gateway
 from roomlamp.k8s.network import ApiNetworkReader, NetworkSummary, summarize_network
 from roomlamp.k8s.resources import ALL_NAMESPACES, PodSummary, summarize_pod
+from roomlamp.k8s.security import (
+    ApiSecurityReader,
+    SecuritySummary,
+    is_namespaced,
+    list_kinds_for,
+    summarize_security,
+)
 from roomlamp.k8s.storage import ApiStorageReader, StorageSummary, summarize_storage
 from roomlamp.k8s.workloads import ApiWorkloadReader, WorkloadSummary, summarize_workload
 
@@ -22,6 +29,7 @@ WorkloadWatchCallback = Callable[[str, WorkloadSummary], None]
 StorageWatchCallback = Callable[[str, StorageSummary], None]
 NetworkWatchCallback = Callable[[str, NetworkSummary], None]
 GatewayWatchCallback = Callable[[str, GatewaySummary], None]
+SecurityWatchCallback = Callable[[str, SecuritySummary], None]
 ErrorCallback = Callable[[str], None]
 Summarize = Callable[[object], TKeyed]
 
@@ -81,6 +89,17 @@ class GatewayWatcher(Protocol):
         namespace: str,
         stop: threading.Event,
         on_event: GatewayWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None: ...
+
+
+class SecurityWatcher(Protocol):
+    def watch_security(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: SecurityWatchCallback,
         on_error: ErrorCallback,
     ) -> None: ...
 
@@ -195,6 +214,51 @@ class ApiGatewayWatcher:
             on_event,
             on_error,
         )
+
+
+class ApiSecurityWatcher:
+    def __init__(self, api_client: ApiClient) -> None:
+        self._security_reader = ApiSecurityReader(api_client)
+
+    def watch_security(
+        self,
+        kind: str,
+        namespace: str,
+        stop: threading.Event,
+        on_event: SecurityWatchCallback,
+        on_error: ErrorCallback,
+    ) -> None:
+        kinds = list_kinds_for(kind)
+        if len(kinds) == 1:
+            listed = kinds[0]
+            watch_ns = namespace if is_namespaced(listed) else ALL_NAMESPACES
+            list_fn, args = self._security_reader.security_list_call(listed, watch_ns)
+            watch_stream(
+                list_fn,
+                args,
+                stop,
+                lambda raw: summarize_security(listed, raw),
+                on_event,
+                on_error,
+            )
+            return
+        threads: list[threading.Thread] = []
+        for listed in kinds:
+            watch_ns = namespace if is_namespaced(listed) else ALL_NAMESPACES
+            list_fn, args = self._security_reader.security_list_call(listed, watch_ns)
+
+            def _summarize(raw: object, listed_kind: str = listed) -> SecuritySummary:
+                return summarize_security(listed_kind, raw)
+
+            thread = threading.Thread(
+                target=watch_stream,
+                args=(list_fn, args, stop, _summarize, on_event, on_error),
+                daemon=True,
+            )
+            threads.append(thread)
+            thread.start()
+        for thread in threads:
+            thread.join()
 
 
 def watch_stream(
