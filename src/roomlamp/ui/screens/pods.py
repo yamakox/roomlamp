@@ -22,6 +22,7 @@ from roomlamp.ui.bindings import CONTEXT_BINDING, HOME_BINDING, MENU_BINDING, Na
 from roomlamp.ui.screens.delete import request_delete, selected_row_key
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.pod_detail import PodDetailScreen
+from roomlamp.ui.status import set_status, status_widget
 from roomlamp.ui.widgets.data_table import ResourceTable
 
 POD_COLUMNS = ('Namespace', 'Name', 'Ready', 'Status', 'Restarts', 'Node')
@@ -98,7 +99,7 @@ class PodListScreen(NavigationMixin, Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Vertical(
-            Static('', id='pods-status'),
+            status_widget('pods-status'),
             ResourceTable(id='pods', cursor_type='row'),
             id='pods-wrap',
         )
@@ -285,7 +286,7 @@ class PodListScreen(NavigationMixin, Screen[None]):
         self.refresh_bindings()
 
     def _set_status(self, message: str) -> None:
-        self.query_one('#pods-status', Static).update(message)
+        set_status(self.query_one('#pods-status', Static), message)
 
     def _set_subtitle(self) -> None:
         context = self.info.context_name or 'no context'

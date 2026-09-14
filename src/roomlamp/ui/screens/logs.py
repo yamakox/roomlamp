@@ -15,6 +15,7 @@ from textual.widgets import Footer, Header, Log, Static
 from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.logs import DEFAULT_TAIL_LINES, close_log_stream, interrupt_log_stream
 from roomlamp.ui.screens.containers import ContainerScreen
+from roomlamp.ui.status import set_status, status_widget
 
 
 class PodLogLine(Message):
@@ -71,7 +72,7 @@ class PodLogsScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Vertical(
-            Static('', id='logs-status'),
+            status_widget('logs-status'),
             Log(id='pod-logs', highlight=False, max_lines=10000),
             id='logs-wrap',
         )
@@ -191,7 +192,7 @@ class PodLogsScreen(Screen[None]):
         self.query_one('#pod-logs', Log).clear()
 
     def _set_status(self, message: str) -> None:
-        self.query_one('#logs-status', Static).update(message)
+        set_status(self.query_one('#logs-status', Static), message)
 
     def _set_subtitle(self) -> None:
         container = self.container or '(default)'

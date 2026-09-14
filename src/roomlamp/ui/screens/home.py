@@ -15,6 +15,7 @@ from roomlamp.k8s.errors import api_error_message
 from roomlamp.k8s.metrics import METRICS_FORBIDDEN, METRICS_NOT_FOUND, METRICS_OK
 from roomlamp.k8s.nodes import HomeSnapshot, NodeSummary
 from roomlamp.ui.bindings import CONTEXT_BINDING, MENU_BINDING, NavigationMixin
+from roomlamp.ui.status import set_status, status_widget
 from roomlamp.ui.usage import format_bar, format_cpu, format_memory
 
 OVERVIEW_INTERVAL_SECONDS = 60.0
@@ -87,7 +88,7 @@ class HomeScreen(NavigationMixin, Screen[None]):
         self.sub_title = info.context_name or 'no context'
         self.query_one('#home-identity', Static).update(_identity(info))
         if cluster is None or not info.ok:
-            self.query_one('#home-status', Static).update('')
+            set_status(self.query_one('#home-status', Static), '')
             self.query_one('#home-overview', Static).update('')
             table = self.query_one('#nodes', DataTable)
             if table.columns:
@@ -113,7 +114,7 @@ class HomeScreen(NavigationMixin, Screen[None]):
         yield Header()
         yield VerticalScroll(
             Static(_identity(self.info), id='home-identity'),
-            Static('', id='home-status'),
+            status_widget('home-status'),
             Static('', id='home-overview'),
             table,
             id='home',
@@ -133,7 +134,7 @@ class HomeScreen(NavigationMixin, Screen[None]):
             else:
                 snapshot = await asyncio.to_thread(self._load_from_parts)
         except Exception as exc:
-            self.query_one('#home-status', Static).update(api_error_message(exc))
+            set_status(self.query_one('#home-status', Static), api_error_message(exc))
             return
         self._snapshot = snapshot
         self._apply_snapshot()
@@ -172,7 +173,7 @@ class HomeScreen(NavigationMixin, Screen[None]):
             status = snapshot.metrics_message or 'Metrics forbidden'
         elif snapshot.metrics_status not in {METRICS_OK, METRICS_NOT_FOUND} and snapshot.metrics_message:
             status = snapshot.metrics_message
-        self.query_one('#home-status', Static).update(status)
+        set_status(self.query_one('#home-status', Static), status)
         self.query_one('#home-overview', Static).update(_overview_text(snapshot))
         self._apply_table()
 

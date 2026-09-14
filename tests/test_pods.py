@@ -124,6 +124,33 @@ def test_pod_list_table_stays_above_footer() -> None:
     asyncio.run(_run())
 
 
+def test_pod_list_hides_empty_status_and_keeps_one_row_padding() -> None:
+    app = RoomlampApp(_info(), cluster=FakeCluster(), enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test(size=(80, 24)) as pilot:
+            await open_kind(app, pilot)
+            screen = app.screen
+            assert isinstance(screen, PodListScreen)
+            wrap = screen.query_one('#pods-wrap', Vertical)
+            status = screen.query_one('#pods-status', Static)
+            table = screen.query_one('#pods', DataTable)
+            assert status.display is False
+            assert table.region.y == wrap.region.y + 1
+            assert wrap.region.bottom - table.region.bottom == 1
+            screen._set_status('Reason: Unauthorized')
+            await pilot.pause()
+            assert status.display is True
+            assert 'Unauthorized' in str(status.content)
+            assert table.region.y > wrap.region.y + 1
+            screen._set_status('')
+            await pilot.pause()
+            assert status.display is False
+            assert table.region.y == wrap.region.y + 1
+
+    asyncio.run(_run())
+
+
 def test_pod_detail_opens_from_row() -> None:
     app = RoomlampApp(_info(), cluster=FakeCluster(), enable_watch=False)
 

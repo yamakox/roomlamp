@@ -28,6 +28,7 @@ from roomlamp.k8s.exec import (
     shells_for_node_os,
 )
 from roomlamp.ui.screens.containers import ContainerScreen
+from roomlamp.ui.status import set_status, status_widget
 
 _CSI_RE = re.compile(r'\x1b\[([0-9;?]*)([A-Za-z@-~])')
 
@@ -327,7 +328,7 @@ class PodExecScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Vertical(
-            Static('', id='exec-status'),
+            status_widget('exec-status'),
             ExecView(id='pod-exec', highlight=False, max_lines=10000),
             id='exec-wrap',
         )
@@ -503,7 +504,7 @@ class PodExecScreen(Screen[None]):
         self.query_one('#pod-exec', ExecView).clear()
 
     def _set_status(self, message: str) -> None:
-        self.query_one('#exec-status', Static).update(message)
+        set_status(self.query_one('#exec-status', Static), message)
 
     def _set_subtitle(self) -> None:
         container = self.container or '(default)'
