@@ -30,6 +30,14 @@ class RoomlampApp(App[None]):
         height: 1fr;
     }
 
+    #pods-wrap, #workloads-wrap, #storage-wrap, #network-wrap, #gateway-wrap, #security-wrap, #configuration-wrap, #catalog-wrap {
+        height: 1fr;
+    }
+
+    #pods, #workloads, #storage, #network, #gateway, #security, #configuration, #catalog {
+        height: 1fr;
+    }
+
     #nodes {
         height: auto;
         overflow-y: hidden;

@@ -12,8 +12,9 @@ from roomlamp.ui.screens.namespaces import NamespaceScreen
 from roomlamp.ui.screens.pod_detail import PodDetailScreen
 from roomlamp.ui.screens.pods import PodListScreen, sort_pods
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
-from textual.containers import VerticalScroll
-from textual.widgets import DataTable, Log, Static, TextArea
+from textual.containers import Vertical, VerticalScroll
+from textual.coordinate import Coordinate
+from textual.widgets import DataTable, Footer, Log, Static, TextArea
 
 
 class FakeCluster:
@@ -98,6 +99,27 @@ def test_pod_list_shows_namespace_pods() -> None:
             screen.namespace = ALL_NAMESPACES
             screen._load_sync()
             assert table.row_count == 2
+
+    asyncio.run(_run())
+
+
+def test_pod_list_table_stays_above_footer() -> None:
+    cluster = FakeCluster()
+    cluster.pods = [PodSummary(f'pod-{index:02d}', 'default', 'Running', '1/1', 0, 'node-a') for index in range(30)]
+    app = RoomlampApp(_info(), cluster=cluster, enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test(size=(80, 16)) as pilot:
+            await open_kind(app, pilot)
+            wrap = app.screen.query_one('#pods-wrap', Vertical)
+            table = app.screen.query_one('#pods', DataTable)
+            footer = app.screen.query_one(Footer)
+            assert wrap.region.bottom <= footer.region.y
+            assert table.region.bottom <= footer.region.y
+            table.cursor_coordinate = Coordinate(29, 0)
+            await pilot.pause()
+            assert table.cursor_coordinate.row == 29
+            assert table.region.bottom <= footer.region.y
 
     asyncio.run(_run())
 
