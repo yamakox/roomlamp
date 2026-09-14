@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
+from kubernetes.client.exceptions import ApiException
 from textual.widgets import DataTable, Static, TextArea
 
 from helpers import open_kind
@@ -266,5 +267,32 @@ def test_workload_yaml_opens_from_detail() -> None:
             text = yaml_view.text
             assert 'kind: Deployment' in text
             assert 'name: web' in text
+
+    asyncio.run(_run())
+
+
+class UnauthorizedCluster:
+    def list_namespaces(self) -> list[str]:
+        return ['default']
+
+    def list_workloads(self, kind: str, namespace: str) -> list[WorkloadSummary]:
+        raise ApiException(status=401, reason='Unauthorized')
+
+
+def test_workload_list_click_after_unauthorized_does_not_crash() -> None:
+    app = RoomlampApp(_info(), cluster=UnauthorizedCluster(), enable_watch=False)
+
+    async def _run() -> None:
+        async with app.run_test() as pilot:
+            await open_kind(app, pilot, DEPLOYMENT)
+            screen = app.screen
+            assert isinstance(screen, WorkloadListScreen)
+            status = screen.query_one('#workloads-status', Static)
+            assert 'Unauthorized' in str(status.content)
+            table = screen.query_one('#workloads', DataTable)
+            assert not table.columns
+            await pilot.click('#workloads')
+            assert isinstance(app.screen, WorkloadListScreen)
+            assert 'Unauthorized' in str(screen.query_one('#workloads-status', Static).content)
 
     asyncio.run(_run())

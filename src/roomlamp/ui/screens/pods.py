@@ -22,6 +22,7 @@ from roomlamp.ui.bindings import CONTEXT_BINDING, HOME_BINDING, MENU_BINDING, Na
 from roomlamp.ui.screens.delete import request_delete, selected_row_key
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.pod_detail import PodDetailScreen
+from roomlamp.ui.widgets.data_table import ResourceTable
 
 POD_COLUMNS = ('Namespace', 'Name', 'Ready', 'Status', 'Restarts', 'Node')
 
@@ -98,7 +99,7 @@ class PodListScreen(NavigationMixin, Screen[None]):
         yield Header()
         yield Vertical(
             Static('', id='pods-status'),
-            DataTable(id='pods', cursor_type='row'),
+            ResourceTable(id='pods', cursor_type='row'),
             id='pods-wrap',
         )
         yield Footer()

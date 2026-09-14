@@ -29,6 +29,7 @@ from roomlamp.ui.bindings import CONTEXT_BINDING, HOME_BINDING, MENU_BINDING, Na
 from roomlamp.ui.screens.delete import request_delete, selected_row_key
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
+from roomlamp.ui.widgets.data_table import ResourceTable
 
 
 def sort_storage(items: list[StorageSummary], column: int, ascending: bool) -> list[StorageSummary]:
@@ -91,7 +92,7 @@ class StorageListScreen(NavigationMixin, Screen[None]):
         yield Header()
         yield Vertical(
             Static('', id='storage-status'),
-            DataTable(id='storage', cursor_type='row'),
+            ResourceTable(id='storage', cursor_type='row'),
             id='storage-wrap',
         )
         yield Footer()

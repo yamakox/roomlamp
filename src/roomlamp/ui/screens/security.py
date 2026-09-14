@@ -28,6 +28,7 @@ from roomlamp.ui.bindings import CONTEXT_BINDING, HOME_BINDING, MENU_BINDING, Na
 from roomlamp.ui.screens.delete import request_delete, selected_row_key
 from roomlamp.ui.screens.namespaces import ALL_LABEL, NamespaceScreen
 from roomlamp.ui.screens.yaml_view import YamlViewScreen
+from roomlamp.ui.widgets.data_table import ResourceTable
 
 
 def sort_security(items: list[SecuritySummary], column: int, ascending: bool) -> list[SecuritySummary]:
@@ -90,7 +91,7 @@ class SecurityListScreen(NavigationMixin, Screen[None]):
         yield Header()
         yield Vertical(
             Static('', id='security-status'),
-            DataTable(id='security', cursor_type='row'),
+            ResourceTable(id='security', cursor_type='row'),
             id='security-wrap',
         )
         yield Footer()

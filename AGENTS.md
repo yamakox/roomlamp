@@ -113,7 +113,7 @@ Never dump kubeconfig contents, tokens, or certificate data.
 
 ## Repo map
 
-This project uses the src layout. Add new modules under the target layout below as features are implemented. Do not introduce `frontend/`, `backend/`, `app/`, or `plugins/` directories. Do not scaffold unused packages (for example `ui/widgets/`) until that work starts.
+This project uses the src layout. Add new modules under the target layout below as features are implemented. Do not introduce `frontend/`, `backend/`, `app/`, or `plugins/` directories. Do not scaffold unused packages until that work starts.
 
 - **`src/roomlamp/`** — application package. CLI entry is `roomlamp = "roomlamp:main"` in `./pyproject.toml`.
   - `__init__.py` — package surface; `main()` delegates to Click
@@ -148,7 +148,8 @@ This project uses the src layout. Add new modules under the target layout below 
     - `bindings.py` — shared `m` Menu / `c` Context / `h` Home bindings and stack helpers
     - `usage.py` — htop-style usage bars
     - `screens/` — home, main menu, Pod list/detail, workload list/detail, storage list/detail, network list/detail, gateway list/detail, security list/detail, configuration list/detail, cluster catalog list/detail, namespace picker, context picker, kind picker, YAML editor, Pod logs, Pod exec, container picker, delete confirm
-    - `widgets/` — reusable widgets (add when a second consumer needs one)
+    - `widgets/` — reusable widgets
+      - `data_table.py` — list DataTable that ignores header clicks when there are no columns
 - **`tests/`** — pytest suite (outside `src/`)
 - **`docs/`** — developer and user docs; reference specific files under `docs/` for workflows when they exist
   - `docs/development/roadmap.md` — human-readable implementation process (phases 1–12). Update it when a phase starts or finishes. Commands in that file must match this document and `./pyproject.toml`.
