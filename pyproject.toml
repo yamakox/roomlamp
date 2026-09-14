@@ -25,7 +25,7 @@ dependencies = [
 roomlamp = "roomlamp:main"
 
 [project.urls]
-Homepage = "https://y-app.cc/"
+Homepage = "https://github.com/yamakox/roomlamp"
 Repository = "https://github.com/yamakox/roomlamp"
 Issues = "https://github.com/yamakox/roomlamp/issues"
 
