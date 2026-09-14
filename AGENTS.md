@@ -154,7 +154,7 @@ This project uses the src layout. Add new modules under the target layout below 
 - **`tests/`** — pytest suite (outside `src/`)
 - **`docs/`** — developer and user docs; reference specific files under `docs/` for workflows when they exist
   - `docs/development/roadmap.md` — human-readable implementation process (phases 1–12). Update it when a phase starts or finishes. Commands in that file must match this document and `./pyproject.toml`.
-  - `docs/manual/` — end-user usage. Keep it aligned with the current implementation stage. Put longer how-to text here; keep `/README.md` short and link to the manual.
+  - `docs/manual/` — end-user usage. Keep it aligned with the current implementation stage. Put longer how-to text here; keep `/README.md` short and link to the manual. When a Current limitations item (or other user-visible capability) lands, update `docs/manual/usage.md` in the same change: add it under This release, remove it from Current limitations, and adjust Details, Keys, or Compared with Headlamp when those sections apply.
 - **`/README.md`** — project overview and the public How to Use commands (`uvx roomlamp`, `uv tool install --from https://github.com/yamakox/roomlamp.git roomlamp`). Do not change those command blocks unless the user asks. The PyPI package name will be `roomlamp`. When user-visible behavior changes, update the README status blurb and `docs/manual/`.
 - **Project config (consult before changing or deleting):**
   - `.editorconfig`
@@ -260,7 +260,7 @@ When `docs/` later documents a command, prefer that documented command if it sti
   - **Refactoring:** Ensure behavior remains unchanged, validate with existing tests
   - **Performance:** Measure before and after when the change is performance-motivated
   - **Security:** Treat kubeconfig, tokens, and cluster credentials as secrets; never log them
-  - **Documentation:** Keep it concise, accurate, and consistent with actual uv commands. Keep `docs/development/roadmap.md` current so a human can follow the path from phase 1 through phase 12 without reading the chat history. Keep `/README.md` and `docs/manual/` current for end users: README stays short (install/run); the manual describes prerequisites, flags, keys, and what this stage can and cannot do.
+  - **Documentation:** Keep it concise, accurate, and consistent with actual uv commands. Keep `docs/development/roadmap.md` current so a human can follow the path from phase 1 through phase 12 without reading the chat history. Keep `/README.md` and `docs/manual/` current for end users: README stays short (install/run); the manual describes prerequisites, flags, keys, and what this stage can and cannot do. Update those docs in the same change as the feature, not as a follow-up.
 - **TUI-specific guidelines:**
   - Keep blocking Kubernetes I/O off the Textual event loop (`asyncio.to_thread` or `threading`)
   - Prefer keyboard-first workflows; document new key bindings

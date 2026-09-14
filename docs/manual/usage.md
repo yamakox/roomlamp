@@ -1,10 +1,59 @@
 # User manual
 
-Roomlamp is a terminal UI for Kubernetes. This page describes the **cluster home** (CPU / memory / Pod / Node overview and a Node list), **Cluster** (Namespace, Node), **workload lists** (Pods, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob), **Storage** (PersistentVolumeClaim, PersistentVolume, StorageClass), **Network** (Service, Endpoints, EndpointSlice, Ingress), **Gateway** (Gateway, GatewayClass, HTTPRoute when those CRDs are installed), **Security** (ServiceAccount, Role, RoleBinding), and **Configuration** (ConfigMap, Secret). Open kinds from the main menu. Press `c` to switch kubeconfig context without rewriting the file. From a detail view you can edit YAML and apply it, open Pod logs, exec into a Pod, or delete the object. Keys for actions the current kubeconfig user cannot perform are hidden.
+Roomlamp is a terminal UI for Kubernetes. Open kinds from the main menu. Press `c` to switch kubeconfig context without rewriting the file. Keys for actions the current kubeconfig user cannot perform are hidden.
+
+This page describes what this release can do.
+
+## This release
+
+**Home**
+
+- Context, cluster, user, and kubeconfig path
+- CPU / memory / Pod / Node usage overview
+- Node list (list only; open Node detail from `Cluster` → `Nodes`)
+
+**Cluster**
+
+- Namespaces
+- Nodes
+
+**Workloads**
+
+- Pods, Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, CronJobs
+
+**Storage**
+
+- PersistentVolumeClaims, PersistentVolumes, StorageClasses
+
+**Network**
+
+- Services, Endpoints, EndpointSlices, Ingresses
+
+**Gateway** (when the cluster serves those CRDs)
+
+- Gateways, GatewayClasses, HTTPRoutes
+
+**Security**
+
+- ServiceAccounts
+- Roles (including ClusterRoles)
+- RoleBindings (including ClusterRoleBindings)
+
+**Configuration**
+
+- ConfigMaps, Secrets
+
+**Operator actions**
+
+- Watch-backed tables and detail views
+- Namespace switching on namespaced kinds
+- kubeconfig context switching in this process only (does not rewrite the file)
+- YAML edit/apply, Pod logs, Pod exec, and delete
+- Actions the current kubeconfig user cannot perform are hidden
 
 ## Prerequisites
 
-- A development PC (or any machine where you run Roomlamp) with [uv](https://docs.astral.sh/uv/)
+- A machine with [uv](https://docs.astral.sh/uv/)
 - **kubectl** installed on that machine, so you can confirm the kubeconfig before starting the TUI
 - Network access to a Kubernetes API server
 - A kubeconfig that can authenticate to that cluster (the same file kubectl uses)
@@ -20,7 +69,7 @@ kubectl config current-context
 
 ## Install and run
 
-After Roomlamp is published to PyPI as `roomlamp`, the fastest way to try it is:
+The fastest way to try it is:
 
 ```bash
 uvx roomlamp
@@ -40,7 +89,16 @@ uv sync
 uv run roomlamp
 ```
 
-If kubeconfig loads, the first screen is the cluster home (context / cluster / user, usage overview, and a Node list). Press `m` to open the main menu, then Cluster, Workloads, Storage, Network, Gateway, Security, or Configuration for those lists. Press `c` to pick another kubeconfig context; that change stays in this process and does not rewrite kubeconfig. Gateway kinds are hidden when the API does not serve them (no Gateway CRDs). If kubeconfig is missing or invalid, Roomlamp still starts and shows the error on the home screen.
+## First screen
+
+If kubeconfig loads, the first screen is the cluster home.
+
+- Identity: context / cluster / user, and the kubeconfig path
+- Usage overview and a Node list
+- `m` opens the main menu (`Cluster`, `Workloads`, `Storage`, `Network`, `Gateway`, `Security`, `Configuration`)
+- `c` opens the kubeconfig context picker; the change stays in this process and does not rewrite kubeconfig
+- Gateway kinds are hidden when the API does not serve them (no Gateway CRDs)
+- If kubeconfig is missing or invalid, Roomlamp still starts and shows the error on the home screen
 
 ## Kubeconfig
 
@@ -63,7 +121,7 @@ The TUI does not display tokens, client keys, or certificate data. Switching con
 
 | Key | Action |
 | --- | --- |
-| `m` | Open the main menu (groups, then kinds). Each list ends with Back: kinds return to groups, groups close the menu |
+| `m` | Open the main menu (groups, then kinds). Each list ends with `Back`: kinds return to groups, groups close the menu |
 | `c` | Switch kubeconfig context (home, lists, and details). On Pod logs, pick a container |
 | `h` | Return to the home screen (hidden on home) |
 | `enter` | Open the selected item's detail (not used on the home Node table) |
@@ -83,7 +141,14 @@ The TUI does not display tokens, client keys, or certificate data. Switching con
 
 ## What you see
 
-The home screen shows Context, Cluster, User, and the kubeconfig path, then htop-style bars for CPU, Memory, Pods, and Nodes, then a Node table. The home view scrolls as a whole when the terminal is short. CPU and Memory come from Metrics Server (`metrics.k8s.io`); if it is missing, those bars show unavailable. If metrics are forbidden, those bars are hidden. The home view refreshes every 60 seconds and with `r`. List columns follow Headlamp and `kubectl get` for that kind:
+The home screen shows Context, Cluster, User, and the kubeconfig path, then htop-style bars for CPU, Memory, Pods, and Nodes, then a Node table.
+
+- The home view scrolls as a whole when the terminal is short
+- CPU and Memory come from Metrics Server (`metrics.k8s.io`); if it is missing, those bars show unavailable
+- If metrics are forbidden, those bars are hidden
+- The home view refreshes every 60 seconds and with `r`
+
+List columns follow Headlamp and `kubectl get` for that kind:
 
 **Home**
 
@@ -150,23 +215,135 @@ The home screen shows Context, Cluster, User, and the kubeconfig path, then htop
 | Config Maps | Namespace, Name, Data, Age |
 | Secrets | Namespace, Name, Type, Data, Age |
 
-Click a column header to sort ascending; click the same header again to sort descending. A different header starts over at ascending. The header subtitle is `context / namespace` (lists also show the kind). PersistentVolumes, StorageClasses, GatewayClasses, Namespaces, and Nodes are cluster-scoped, so the subtitle omits a namespace. Resource lists update from the Kubernetes Watch API when the connection stays up. API errors show the HTTP Reason first, then the response body (JSON Status objects as YAML). Switching context with `c` always opens the picker (even when the file has one context). Choosing the current context shows `No changes to apply`. A successful switch returns to home and rebuilds the API client; a failed switch stays on the previous context and screen. YAML edit and Pod exec omit `c`.
+## Lists
 
-Detail views summarize metadata, kind-specific status fields, and labels. Workload details also list container image lines from the pod template. Storage details include Headlamp extra fields that fit a TUI (requested size, volume mode, PV source, StorageClass parameters). Network details include Service traffic policy and ports, Endpoints subsets, EndpointSlice conditions, and Ingress rules and TLS. Gateway details include listener protocol/port/hostname, addresses, conditions, and HTTPRoute parent refs, matches, and backends. Security details include ServiceAccount secrets and automount, Role / ClusterRole rules, and RoleBinding / ClusterRoleBinding roleRef and subjects. The Roles list also shows ClusterRoles, and the Role Bindings list also shows ClusterRoleBindings (Headlamp's mixed tables). Configuration details include ConfigMap data and binaryData keys, and Secret type plus data key names with byte sizes (values are not decoded in the detail view). Cluster details include Namespace status and conditions, and Node roles, taints, addresses, capacity, allocatable, and system info. Open Node detail from Cluster → Nodes, not from the home Node table. From a detail screen, `y` opens the live object as YAML (`managedFields` hidden). If you can `update` the object, that YAML is an editor: `ctrl+s` applies (POST, then PUT if the object already exists, matching Headlamp); `f8` dry-runs; `ctrl+r` reloads from the API. Without `update`, the YAML stays read-only. From a Pod, `l` opens logs for the default container (a running main container if there is one, matching Headlamp) when you can `get` the `log` subresource. The log view tails 100 lines with timestamps and follows the stream while the screen is open. `e` opens an interactive exec session in that same default container when you can `create` on `exec`. Roomlamp tries `bash`, then `/bin/bash`, then `sh`, then `/bin/sh` (Headlamp's linux list; windows pods get `powershell.exe` / `cmd.exe`). `f2` switches container; `ctrl+]` detaches. `escape` and `q` are sent to the shell, not used to leave the screen. `d` on a list or detail screen asks for confirmation, then deletes the object (Jobs use Background deletion; Force delete sets a zero grace period) when you have `delete`. System Namespaces require typing the name before Delete. On Pods, Evict is also offered (`pods/eviction`, verb `create`) when that subresource is allowed.
+- Click a column header to sort ascending; click the same header again to sort descending. A different header starts over at ascending.
+- The header subtitle is `context / namespace` (lists also show the kind).
+- PersistentVolumes, StorageClasses, GatewayClasses, Namespaces, and Nodes are cluster-scoped, so the subtitle omits a namespace.
+- Resource lists update from the Kubernetes Watch API when the connection stays up.
+- API errors show the HTTP Reason first, then the response body (JSON Status objects as YAML).
+- Switching context with `c` always opens the picker (even when the file has one context).
+- Choosing the current context shows `No changes to apply`.
+- A successful switch returns to home and rebuilds the API client; a failed switch stays on the previous context and screen.
+- YAML edit and Pod exec omit `c`.
+
+## Details
+
+Every detail view summarizes metadata, kind-specific status fields, and labels. Open Node detail from `Cluster` → `Nodes`, not from the home Node table.
+
+### Cluster
+
+- Namespace status and conditions
+- Node roles, taints, addresses, capacity, allocatable, and system info
+
+### Workloads
+
+- Container image lines from the pod template
+
+### Storage
+
+- Requested size, volume mode, PV source, and StorageClass parameters (Headlamp extra fields that fit a TUI)
+
+### Network
+
+- Service traffic policy and ports
+- Endpoints subsets
+- EndpointSlice conditions
+- Ingress rules and TLS
+
+### Gateway
+
+- Listener protocol, port, and hostname
+- Addresses and conditions
+- HTTPRoute parent refs, matches, and backends
+
+### Security
+
+- ServiceAccount secrets and automount
+- Role / ClusterRole rules
+- RoleBinding / ClusterRoleBinding roleRef and subjects
+- The `Roles` list also shows ClusterRoles, and the `Role Bindings` list also shows ClusterRoleBindings (Headlamp's mixed tables)
+
+### Configuration
+
+- ConfigMap data and binaryData keys
+- Secret type plus data key names with byte sizes (values are not decoded in the detail view)
+
+## Actions
+
+### YAML
+
+From a detail screen, `y` opens the live object as YAML (`managedFields` hidden).
+
+- If you can `update` the object, that YAML is an editor: `ctrl+s` applies (POST, then PUT if the object already exists, matching Headlamp); `f8` dry-runs; `ctrl+r` reloads from the API
+- Without `update`, the YAML stays read-only
+
+### Pod logs
+
+From a Pod, `l` opens logs for the default container (a running main container if there is one, matching Headlamp) when you can `get` the `log` subresource.
+
+- The log view tails 100 lines with timestamps and follows the stream while the screen is open
+
+### Pod exec
+
+`e` opens an interactive exec session in that same default container when you can `create` on `exec`.
+
+- Linux: `bash`, then `/bin/bash`, then `sh`, then `/bin/sh` (Headlamp's linux list)
+- Windows: `powershell.exe` / `cmd.exe`
+- `f2` switches container; `ctrl+]` detaches
+- `escape` and `q` are sent to the shell, not used to leave the screen
+
+### Delete
+
+`d` on a list or detail screen asks for confirmation, then deletes the object when you have `delete`.
+
+- Jobs use Background deletion
+- Force delete sets a zero grace period
+- System Namespaces (`default`, `kube-public`, `kube-node-lease`, `kube-system`) require typing the name before Delete
+- On Pods, Evict is also offered (`pods/eviction`, verb `create`) when that subresource is allowed
+
+## Compared with Headlamp
+
+Roomlamp is inspired by Headlamp's core features. It is not a port of Headlamp's web, Electron, in-cluster, or plugin architecture.
+
+- Single Python process TUI (`uvx roomlamp` / `uv run roomlamp`). Not a browser UI, Electron desktop app, or in-cluster dashboard
+- Authentication uses the same kubeconfig as kubectl. There is no in-cluster ServiceAccount token create or show UI
+- Context switching is in-process only (`persist_config=False`). It does not rewrite `current-context` on disk
+- Main menu groups follow Headlamp's sidebar order. Kinds that are not implemented are omitted. Gateway kinds appear only when the API serves those CRDs
+- The home Node table is a list only. Node detail is `Cluster` → `Nodes`
+- `Roles` / `Role Bindings` mix ClusterRole(s) the same way Headlamp's tables do
+- Exec is a TTY text log (ANSI stripped), not a full terminal emulator; tools such as vim or top may not render correctly
+- No plugin system
 
 ## Current limitations
 
+**Workloads**
+
+- No JobSet or LeaderWorkerSet lists
+- No aggregated logs from a Deployment or other workload detail
+
+**Storage**
+
 - No VolumeAttributesClass lists
+
+**Network**
+
 - No IngressClass or NetworkPolicy lists
+- No Port Forwarding
+
+**Gateway**
+
 - No GRPCRoute, TCPRoute, UDPRoute, ReferenceGrant, BackendTLSPolicy, or BackendTrafficPolicy lists
+
+**Security**
+
 - No ServiceAccount token create or show UI
+
+**Configuration**
+
 - No HPA, VPA, PodDisruptionBudget, ResourceQuota, LimitRange, PriorityClass, RuntimeClass, Lease, or admission webhook lists
 - Secret detail does not decode or copy data values (YAML still shows the live API object)
-- No Port Forwarding
-- No JobSet or LeaderWorkerSet lists
-- No attach or debug / ephemeral containers
-- Exec is a TTY text log (ANSI stripped), not a full terminal emulator; tools such as vim or top may not render correctly
-- No aggregated logs from a Deployment or other workload detail
-- No plugin system
 
-When those features land, this manual should be updated in the same change.
+**Actions**
+
+- No attach or debug / ephemeral containers
