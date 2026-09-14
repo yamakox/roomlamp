@@ -155,7 +155,7 @@ This project uses the src layout. Add new modules under the target layout below 
 - **`docs/`** — developer and user docs; reference specific files under `docs/` for workflows when they exist
   - `docs/development/roadmap.md` — human-readable implementation process (phases 1–12). Update it when a phase starts or finishes. Commands in that file must match this document and `./pyproject.toml`.
   - `docs/manual/` — end-user usage. Keep it aligned with the current implementation stage. Put longer how-to text here; keep `/README.md` short and link to the manual. When a Current limitations item (or other user-visible capability) lands, update `docs/manual/usage.md` in the same change: add it under This release, remove it from Current limitations, and adjust Details, Keys, or Compared with Headlamp when those sections apply.
-- **`/README.md`** — project overview and the public How to Use commands (`uvx roomlamp`, `uv tool install --from https://github.com/yamakox/roomlamp.git roomlamp`). Do not change those command blocks unless the user asks. The PyPI package name will be `roomlamp`. When user-visible behavior changes, update the README status blurb and `docs/manual/`.
+- **`/README.md`** — project overview and the public How to Use commands (`uvx roomlamp`, `uv tool install --from https://github.com/yamakox/roomlamp.git roomlamp`). Do not change those command blocks unless the user asks. The PyPI package name is `roomlamp`. When user-visible behavior changes, update the README status blurb and `docs/manual/`.
 - **Project config (consult before changing or deleting):**
   - `.editorconfig`
   - `.markdownlint.json`
